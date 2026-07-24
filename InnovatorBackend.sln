@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -13,6 +13,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FeedService", "Services\FeedService\FeedService.csproj", "{C25D06D1-69D9-4D15-AD37-1C22E7E23A77}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatService", "Services\ChatService\ChatService.csproj", "{E438F6BA-307F-491A-A953-0B8CA8EB95CC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SearchService", "Services\SearchService\SearchService.csproj", "{402B2F42-D161-4981-B7ED-C63CDAE9E0A2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{4EBE21CC-F682-4DB2-A173-B1543C88F72A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EcommerceService", "Services\EcommerceService\EcommerceService.csproj", "{311A2E61-CF15-439A-8B57-80C5228D3587}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,5 +42,16 @@ Global
 		{E438F6BA-307F-491A-A953-0B8CA8EB95CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E438F6BA-307F-491A-A953-0B8CA8EB95CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E438F6BA-307F-491A-A953-0B8CA8EB95CC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{402B2F42-D161-4981-B7ED-C63CDAE9E0A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{402B2F42-D161-4981-B7ED-C63CDAE9E0A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{402B2F42-D161-4981-B7ED-C63CDAE9E0A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{402B2F42-D161-4981-B7ED-C63CDAE9E0A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{311A2E61-CF15-439A-8B57-80C5228D3587}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{311A2E61-CF15-439A-8B57-80C5228D3587}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{311A2E61-CF15-439A-8B57-80C5228D3587}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{311A2E61-CF15-439A-8B57-80C5228D3587}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{311A2E61-CF15-439A-8B57-80C5228D3587} = {4EBE21CC-F682-4DB2-A173-B1543C88F72A}
 	EndGlobalSection
 EndGlobal
