@@ -1,6 +1,7 @@
 using AuthService.Data;
 using AuthService.DTOs;
 using AuthService.Entities;
+using Google.Apis.Auth;
 using Innovator.Shared.DTOs;
 using Innovator.Shared.Helpers;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ public interface IAuthService
 {
     Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request);
     Task<ApiResponse<AuthResponse>> SsoLoginAsync(SsoLoginRequest request);
+    Task<ApiResponse<GoogleLoginResponse>> GoogleLoginAsync(GoogleLoginRequest request);
     Task<ApiResponse<AuthResponse>> RefreshTokenAsync(string refreshToken);
     Task<ApiResponse<bool>> SendOtpAsync(string email, OtpPurpose purpose);
     Task<ApiResponse<bool>> VerifyOtpAsync(VerifyOtpRequest request);
@@ -116,6 +118,89 @@ public class AuthBusinessService : IAuthService
         var (access, refresh) = await IssueTokensAsync(user);
 
         return ApiResponse<AuthResponse>.Ok(BuildAuthResponse(user, access, refresh), "Login successful.");
+    }
+
+    public async Task<ApiResponse<GoogleLoginResponse>> GoogleLoginAsync(GoogleLoginRequest request)
+    {
+        // Verify the Google ID token: signature, issuer, expiry, and audience
+        // (must be one of our OAuth client IDs from appsettings Google:ClientIds).
+        var clientIds = _config.GetSection("Google:ClientIds").Get<string[]>() ?? Array.Empty<string>();
+
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            var settings = new GoogleJsonWebSignature.ValidationSettings();
+            if (clientIds.Length > 0)
+                settings.Audience = clientIds;
+
+            payload = await GoogleJsonWebSignature.ValidateAsync(request.GoogleToken, settings);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Google token validation failed");
+            return ApiResponse<GoogleLoginResponse>.Fail("Invalid Google token.");
+        }
+
+        var email = (payload.Email ?? string.Empty).ToLower().Trim();
+        if (string.IsNullOrEmpty(email))
+            return ApiResponse<GoogleLoginResponse>.Fail("Google account has no email.");
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+        if (user is null)
+        {
+            user = new User
+            {
+                Username = await GenerateUniqueUsernameAsync(email, payload.Name),
+                Email = email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+                Role = "innovator",
+                IsEmailVerified = true
+            };
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
+        }
+        else if (!user.IsEmailVerified)
+        {
+            user.IsEmailVerified = true; // Google has verified the address
+        }
+
+        if (!user.IsActive)
+            return ApiResponse<GoogleLoginResponse>.Fail("Account is suspended.");
+
+        var (access, refresh) = await IssueTokensAsync(user);
+
+        return ApiResponse<GoogleLoginResponse>.Ok(new GoogleLoginResponse(
+            access,
+            refresh,
+            new GoogleUserDto(user.Id.ToString(), user.Username, user.Email, user.Role, user.IsEmailVerified)),
+            "Login successful.");
+    }
+
+    private async Task<string> GenerateUniqueUsernameAsync(string email, string? displayName)
+    {
+        var seed = email.Split('@')[0];
+        if (string.IsNullOrWhiteSpace(seed) && !string.IsNullOrWhiteSpace(displayName))
+            seed = displayName;
+
+        var baseName = new string(seed.ToLowerInvariant()
+            .Where(c => char.IsLetterOrDigit(c) || c == '_' || c == '.')
+            .ToArray());
+
+        if (baseName.Length < 3)
+            baseName = $"user{baseName}";
+        if (baseName.Length > 40)
+            baseName = baseName[..40];
+
+        var candidate = baseName;
+        var suffix = 0;
+        while (await _db.Users.AnyAsync(u => u.Username == candidate))
+        {
+            suffix++;
+            candidate = $"{baseName}{suffix}";
+        }
+
+        return candidate;
     }
 
     public async Task<ApiResponse<AuthResponse>> RefreshTokenAsync(string refreshToken)

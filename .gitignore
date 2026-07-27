@@ -13,6 +13,8 @@
 *.env
 .env
 deploy/backups/
+secrets/*
+!secrets/.gitkeep
 
 # Uploaded media (kept out of the repo; lives on the server volume)
 Services/*/wwwroot/uploads/*

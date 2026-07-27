@@ -2,6 +2,7 @@ using EcommerceService.Data;
 using EcommerceService.DTOs;
 using EcommerceService.Entities;
 using Innovator.Shared.DTOs;
+using Innovator.Shared.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceService.Services;
@@ -53,12 +54,14 @@ public class AdminService : IAdminService
     private readonly EcommerceDbContext _db;
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _config;
+    private readonly IFirebasePushSender _push;
 
-    public AdminService(EcommerceDbContext db, IWebHostEnvironment env, IConfiguration config)
+    public AdminService(EcommerceDbContext db, IWebHostEnvironment env, IConfiguration config, IFirebasePushSender push)
     {
         _db = db;
         _env = env;
         _config = config;
+        _push = push;
     }
 
     // ---------- Products ----------
@@ -432,6 +435,24 @@ public class AdminService : IAdminService
         }
 
         await _db.SaveChangesAsync();
+
+        // Deliver a real push to the recipients' devices via FCM HTTP v1.
+        var tokens = await _db.FcmTokens
+            .Where(t => recipients.Contains(t.UserId))
+            .Select(t => t.Token)
+            .ToListAsync();
+
+        var data = new Dictionary<string, string> { ["type"] = request.NotificationType };
+        var invalidTokens = await _push.SendToTokensAsync(tokens, request.Title, request.Message, data);
+
+        // Remove tokens FCM reported as dead so we stop sending to them.
+        if (invalidTokens.Count > 0)
+        {
+            var stale = await _db.FcmTokens.Where(t => invalidTokens.Contains(t.Token)).ToListAsync();
+            _db.FcmTokens.RemoveRange(stale);
+            await _db.SaveChangesAsync();
+        }
+
         return ApiResponse<int>.Ok(recipients.Count, $"Notification sent to {recipients.Count} user(s).");
     }
 

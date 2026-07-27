@@ -37,6 +37,14 @@ public class AuthController : ControllerBase
         return result.Success ? Ok(result) : Unauthorized(result);
     }
 
+    [HttpPost("sso/google")]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+    {
+        var result = await _authService.GoogleLoginAsync(request);
+        // Return the flat payload the app reads (access_token / refresh_token / user).
+        return result.Success ? Ok(result.Data) : Unauthorized(new { message = result.Message });
+    }
+
     [HttpPost("token/refresh")]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
     {

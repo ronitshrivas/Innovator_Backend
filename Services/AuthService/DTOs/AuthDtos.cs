@@ -1,6 +1,31 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace AuthService.DTOs;
+
+/// <summary>Body sent by the Flutter app: {"google_token": "<Google ID token>"}.</summary>
+public record GoogleLoginRequest(
+    [property: JsonPropertyName("google_token")]
+    [Required] string GoogleToken
+);
+
+/// <summary>
+/// Flat response the app's Google-login parser reads:
+/// access_token / refresh_token / user{...}. Deliberately NOT the usual envelope.
+/// </summary>
+public record GoogleLoginResponse(
+    [property: JsonPropertyName("access_token")] string AccessToken,
+    [property: JsonPropertyName("refresh_token")] string RefreshToken,
+    [property: JsonPropertyName("user")] GoogleUserDto User
+);
+
+public record GoogleUserDto(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("username")] string Username,
+    [property: JsonPropertyName("email")] string Email,
+    [property: JsonPropertyName("role")] string Role,
+    [property: JsonPropertyName("is_email_verified")] bool IsEmailVerified
+);
 
 public record RegisterRequest(
     [Required, MinLength(3), MaxLength(50)] string Username,
