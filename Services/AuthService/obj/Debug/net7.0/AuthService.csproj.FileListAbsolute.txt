@@ -118,3 +118,13 @@
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/obj/Debug/net7.0/AuthService.pdb
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/obj/Debug/net7.0/AuthService.genruntimeconfig.cache
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/obj/Debug/net7.0/ref/AuthService.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/bin/Debug/net7.0/FirebaseAdmin.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/bin/Debug/net7.0/Google.Api.Gax.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/bin/Debug/net7.0/Google.Api.Gax.Rest.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/bin/Debug/net7.0/Google.Apis.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/bin/Debug/net7.0/Google.Apis.Auth.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/bin/Debug/net7.0/Google.Apis.Core.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/bin/Debug/net7.0/Microsoft.Bcl.AsyncInterfaces.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/bin/Debug/net7.0/Newtonsoft.Json.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/bin/Debug/net7.0/System.Management.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/AuthService/bin/Debug/net7.0/runtimes/win/lib/net7.0/System.Management.dll

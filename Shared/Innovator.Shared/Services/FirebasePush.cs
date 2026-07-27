@@ -54,7 +54,7 @@ public sealed class FirebasePushSender : IFirebasePushSender
             {
                 Tokens = batch,
                 Notification = new Notification { Title = title, Body = body },
-                Data = data
+                Data = data is null ? null : new Dictionary<string, string>(data)
             };
 
             try

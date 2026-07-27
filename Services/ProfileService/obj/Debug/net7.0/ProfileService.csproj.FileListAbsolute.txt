@@ -104,3 +104,12 @@
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/obj/Debug/net7.0/ProfileService.pdb
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/obj/Debug/net7.0/ProfileService.genruntimeconfig.cache
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/obj/Debug/net7.0/ref/ProfileService.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/bin/Debug/net7.0/FirebaseAdmin.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/bin/Debug/net7.0/Google.Api.Gax.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/bin/Debug/net7.0/Google.Api.Gax.Rest.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/bin/Debug/net7.0/Google.Apis.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/bin/Debug/net7.0/Google.Apis.Auth.PlatformServices.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/bin/Debug/net7.0/Google.Apis.Auth.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/bin/Debug/net7.0/Google.Apis.Core.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/bin/Debug/net7.0/Microsoft.Bcl.AsyncInterfaces.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/ProfileService/bin/Debug/net7.0/Newtonsoft.Json.dll
