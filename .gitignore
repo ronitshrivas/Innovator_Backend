@@ -19,3 +19,4 @@ secrets/*
 # Uploaded media (kept out of the repo; lives on the server volume)
 Services/*/wwwroot/uploads/*
 !Services/*/wwwroot/uploads/.gitkeep
+.DS_Store
