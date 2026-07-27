@@ -1,0 +1,19 @@
+# Build output
+**/bin/
+**/obj/
+**/publish/
+
+# IDE / OS
+.vs/
+.vscode/
+*.user
+.DS_Store
+
+# Local env / secrets
+*.env
+.env
+deploy/backups/
+
+# Uploaded media (kept out of the repo; lives on the server volume)
+Services/*/wwwroot/uploads/*
+!Services/*/wwwroot/uploads/.gitkeep
