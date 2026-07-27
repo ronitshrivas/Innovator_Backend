@@ -1,0 +1,25 @@
+{
+  "Files": [
+    {
+      "Id": "/Users/ronitshrivastav/Projects/InnovatorBackend/Services/ElearningService/wwwroot/uploads/.gitkeep",
+      "PackagePath": "staticwebassets/uploads/.gitkeep"
+    },
+    {
+      "Id": "obj/Debug/net7.0/staticwebassets/msbuild.ElearningService.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj/Debug/net7.0/staticwebassets/msbuild.build.ElearningService.props",
+      "PackagePath": "build\\ElearningService.props"
+    },
+    {
+      "Id": "obj/Debug/net7.0/staticwebassets/msbuild.buildMultiTargeting.ElearningService.props",
+      "PackagePath": "buildMultiTargeting\\ElearningService.props"
+    },
+    {
+      "Id": "obj/Debug/net7.0/staticwebassets/msbuild.buildTransitive.ElearningService.props",
+      "PackagePath": "buildTransitive\\ElearningService.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

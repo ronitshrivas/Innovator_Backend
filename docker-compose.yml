@@ -1,0 +1,220 @@
+# Innovator backend — full stack on one VM.
+#
+# Host ports are mapped so the existing Flutter app keeps working unchanged:
+#   8010 -> auth        (app: http://HOST:8010/api/auth)
+#   8003 -> elearning   (app: http://HOST:8003/api/...)
+#   8004 -> ecommerce   (app: http://HOST:8004/api/...)
+#   8005 -> gateway     (app: http://HOST:8005/api/feed|posts|users|events|...)
+#   8000 -> gateway     (unified admin entry)
+# Each service's native port is also published for Swagger/admin access.
+#
+# Bring it up:   docker compose up -d --build
+# View logs:     docker compose logs -f auth-service
+# Stop:          docker compose down        (data is kept in the pgdata volume)
+
+x-common-env: &common-env
+  ASPNETCORE_ENVIRONMENT: Production
+  Jwt__Secret: "7f6f81e89b2b4d1ba28cfae4f2026ae892b15e45c7d8f9a2b3c4d5e6f7a8b9c0"
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: innovator
+      POSTGRES_PASSWORD: innovator123
+      POSTGRES_DB: innovator
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
+    ports:
+      # Host 5440 avoids clashing with the OLD Django Postgres containers (5432-5436).
+      - "5440:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U innovator"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth-service:
+    build:
+      context: .
+      args:
+        PROJECT: Services/AuthService/AuthService.csproj
+        DLL: AuthService.dll
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      ASPNETCORE_URLS: http://+:8010
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_auth;Username=innovator;Password=innovator123"
+    ports:
+      - "8010:8010"
+
+  profile-service:
+    build:
+      context: .
+      args:
+        PROJECT: Services/ProfileService/ProfileService.csproj
+        DLL: ProfileService.dll
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      ASPNETCORE_URLS: http://+:8011
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_profile;Username=innovator;Password=innovator123"
+    ports:
+      - "8011:8011"
+
+  feed-service:
+    build:
+      context: .
+      args:
+        PROJECT: Services/FeedService/FeedService.csproj
+        DLL: FeedService.dll
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      ASPNETCORE_URLS: http://+:8012
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_feed;Username=innovator;Password=innovator123"
+    ports:
+      - "8012:8012"
+
+  chat-service:
+    build:
+      context: .
+      args:
+        PROJECT: Services/ChatService/ChatService.csproj
+        DLL: ChatService.dll
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      ASPNETCORE_URLS: http://+:8014
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_chat;Username=innovator;Password=innovator123"
+    ports:
+      - "8014:8014"
+
+  search-service:
+    build:
+      context: .
+      args:
+        PROJECT: Services/SearchService/SearchService.csproj
+        DLL: SearchService.dll
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      ASPNETCORE_URLS: http://+:8015
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_search;Username=innovator;Password=innovator123"
+    ports:
+      - "8015:8015"
+
+  ecommerce-service:
+    build:
+      context: .
+      args:
+        PROJECT: Services/EcommerceService/EcommerceService.csproj
+        DLL: EcommerceService.dll
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      ASPNETCORE_URLS: http://+:8016
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_ecommerce;Username=innovator;Password=innovator123"
+      PublicBaseUrl: "http://36.253.137.34:8004"
+    ports:
+      - "8004:8016"   # app-facing
+      - "8016:8016"   # swagger/admin
+
+  elearning-service:
+    build:
+      context: .
+      args:
+        PROJECT: Services/ElearningService/ElearningService.csproj
+        DLL: ElearningService.dll
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      ASPNETCORE_URLS: http://+:8017
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_elearning;Username=innovator;Password=innovator123"
+      PublicBaseUrl: "http://36.253.137.34:8003"
+    ports:
+      - "8003:8017"   # app-facing
+      - "8017:8017"   # swagger/admin
+
+  events-service:
+    build:
+      context: .
+      args:
+        PROJECT: Services/EventsService/EventsService.csproj
+        DLL: EventsService.dll
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      ASPNETCORE_URLS: http://+:8018
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_events;Username=innovator;Password=innovator123"
+      PublicBaseUrl: "http://36.253.137.34:8018"
+    ports:
+      - "8018:8018"
+
+  research-service:
+    build:
+      context: .
+      args:
+        PROJECT: Services/ResearchService/ResearchService.csproj
+        DLL: ResearchService.dll
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      ASPNETCORE_URLS: http://+:8019
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_research;Username=innovator;Password=innovator123"
+      PublicBaseUrl: "http://36.253.137.34:8019"
+    ports:
+      - "8019:8019"
+
+  gateway:
+    build:
+      context: .
+      args:
+        PROJECT: ApiGateway/ApiGateway.csproj
+        DLL: ApiGateway.dll
+    restart: unless-stopped
+    depends_on:
+      - auth-service
+      - profile-service
+      - feed-service
+      - chat-service
+      - search-service
+      - events-service
+    environment:
+      <<: *common-env
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "8005:8080"   # app-facing (feed + events share this port, split by path)
+      - "8000:8080"   # unified admin entry
+
+volumes:
+  pgdata:

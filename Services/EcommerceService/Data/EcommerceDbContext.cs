@@ -6,7 +6,6 @@ namespace EcommerceService.Data;
 public class EcommerceDbContext : DbContext
 {
     public EcommerceDbContext(DbContextOptions<EcommerceDbContext> options) : base(options) { }
-
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();

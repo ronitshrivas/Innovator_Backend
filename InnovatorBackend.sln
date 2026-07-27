@@ -20,6 +20,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{4E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EcommerceService", "Services\EcommerceService\EcommerceService.csproj", "{311A2E61-CF15-439A-8B57-80C5228D3587}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ElearningService", "Services\ElearningService\ElearningService.csproj", "{9B7E4C33-2A1D-4F6E-B8C2-5D9A1E3F7C40}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventsService", "Services\EventsService\EventsService.csproj", "{2C8F5D44-3B2E-4A7F-9C1D-6E0B2F4A8D51}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ResearchService", "Services\ResearchService\ResearchService.csproj", "{3D9061E5-4C3F-4B80-AD2E-7F1C3059E62A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,8 +56,23 @@ Global
 		{311A2E61-CF15-439A-8B57-80C5228D3587}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{311A2E61-CF15-439A-8B57-80C5228D3587}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{311A2E61-CF15-439A-8B57-80C5228D3587}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B7E4C33-2A1D-4F6E-B8C2-5D9A1E3F7C40}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B7E4C33-2A1D-4F6E-B8C2-5D9A1E3F7C40}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B7E4C33-2A1D-4F6E-B8C2-5D9A1E3F7C40}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B7E4C33-2A1D-4F6E-B8C2-5D9A1E3F7C40}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C8F5D44-3B2E-4A7F-9C1D-6E0B2F4A8D51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C8F5D44-3B2E-4A7F-9C1D-6E0B2F4A8D51}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C8F5D44-3B2E-4A7F-9C1D-6E0B2F4A8D51}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C8F5D44-3B2E-4A7F-9C1D-6E0B2F4A8D51}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D9061E5-4C3F-4B80-AD2E-7F1C3059E62A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D9061E5-4C3F-4B80-AD2E-7F1C3059E62A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D9061E5-4C3F-4B80-AD2E-7F1C3059E62A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D9061E5-4C3F-4B80-AD2E-7F1C3059E62A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{311A2E61-CF15-439A-8B57-80C5228D3587} = {4EBE21CC-F682-4DB2-A173-B1543C88F72A}
+		{9B7E4C33-2A1D-4F6E-B8C2-5D9A1E3F7C40} = {4EBE21CC-F682-4DB2-A173-B1543C88F72A}
+		{2C8F5D44-3B2E-4A7F-9C1D-6E0B2F4A8D51} = {4EBE21CC-F682-4DB2-A173-B1543C88F72A}
+		{3D9061E5-4C3F-4B80-AD2E-7F1C3059E62A} = {4EBE21CC-F682-4DB2-A173-B1543C88F72A}
 	EndGlobalSection
 EndGlobal

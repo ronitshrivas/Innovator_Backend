@@ -7,7 +7,8 @@
     "SearchService": {
       "commandName": "Project",
       "launchBrowser": true,
-      "applicationUrl": "http://localhost:42266",
+      "launchUrl": "swagger",
+      "applicationUrl": "http://localhost:8015",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

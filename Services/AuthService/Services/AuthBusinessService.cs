@@ -100,11 +100,18 @@ public class AuthBusinessService : IAuthService
                 u.Email == request.Email.ToLower() ||
                 u.Username == request.Email.ToLower());
 
-        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        if (user == null || !PasswordHasher.Verify(request.Password, user.PasswordHash))
             return ApiResponse<AuthResponse>.Fail("Invalid credentials.");
 
         if (!user.IsActive)
             return ApiResponse<AuthResponse>.Fail("Account is suspended.");
+
+        // Migrated users still carry Django's PBKDF2 hash — upgrade to BCrypt now.
+        if (PasswordHasher.NeedsUpgrade(user.PasswordHash))
+        {
+            user.PasswordHash = PasswordHasher.Hash(request.Password);
+            user.UpdatedAt = DateTime.UtcNow;
+        }
 
         var (access, refresh) = await IssueTokensAsync(user);
 
@@ -210,7 +217,7 @@ public class AuthBusinessService : IAuthService
         var user = await _db.Users.FindAsync(userId);
         if (user == null) return ApiResponse<bool>.Fail("User not found.");
 
-        if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, user.PasswordHash))
+        if (!PasswordHasher.Verify(request.OldPassword, user.PasswordHash))
             return ApiResponse<bool>.Fail("Current password is incorrect.");
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);

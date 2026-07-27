@@ -66,11 +66,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ProfileDbContext>();
     await db.Database.MigrateAsync();
-}
+});
 
 app.UseSwagger();
 app.UseSwaggerUI();

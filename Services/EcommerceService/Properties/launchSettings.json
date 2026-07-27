@@ -7,7 +7,8 @@
     "EcommerceService": {
       "commandName": "Project",
       "launchBrowser": true,
-      "applicationUrl": "http://localhost:55953",
+      "launchUrl": "swagger",
+      "applicationUrl": "http://localhost:8016",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
