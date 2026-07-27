@@ -28,6 +28,9 @@ jobs:
             cd ~/InnovatorBackend
             git fetch --all --prune
             git reset --hard origin/main
-            docker compose up -d --build --remove-orphans
+            # Build fresh images, then recreate containers cleanly. --force-recreate
+            # avoids "container name already in use" conflicts from stale containers.
+            docker compose build
+            docker compose up -d --force-recreate --remove-orphans
             docker image prune -f || true
             docker compose ps
