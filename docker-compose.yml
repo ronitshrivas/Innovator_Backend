@@ -84,6 +84,11 @@ services:
       <<: *common-env
       ASPNETCORE_URLS: http://+:8012
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_feed;Username=innovator;Password=innovator123"
+      # Media is reached through the gateway (8005), which routes /media -> feed.
+      PublicBaseUrl: "http://36.253.137.34:8005"
+    volumes:
+      # Persist post media across redeploys; served under /media via UseStaticFiles.
+      - ./uploads/feed:/app/wwwroot/media
     ports:
       - "8012:8012"
 

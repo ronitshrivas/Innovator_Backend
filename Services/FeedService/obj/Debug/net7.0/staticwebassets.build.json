@@ -1,11 +1,37 @@
 {
   "Version": 1,
-  "Hash": "ZNoiOm9tqaDd/sTHkqtulfoIdeOk+LVUYdlBmONv9R8=",
+  "Hash": "NnTb1LS/5dHDCNU1M8zOXF2wZI542dt1KZXpWKYlepE=",
   "Source": "FeedService",
   "BasePath": "_content/FeedService",
   "Mode": "Default",
   "ManifestType": "Build",
   "ReferencedProjectsConfiguration": [],
-  "DiscoveryPatterns": [],
-  "Assets": []
+  "DiscoveryPatterns": [
+    {
+      "Name": "FeedService/wwwroot",
+      "Source": "FeedService",
+      "ContentRoot": "/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/wwwroot/",
+      "BasePath": "_content/FeedService",
+      "Pattern": "**"
+    }
+  ],
+  "Assets": [
+    {
+      "Identity": "/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/wwwroot/media/.gitkeep",
+      "SourceId": "FeedService",
+      "SourceType": "Discovered",
+      "ContentRoot": "/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/wwwroot/",
+      "BasePath": "_content/FeedService",
+      "RelativePath": "media/.gitkeep",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot/media/.gitkeep"
+    }
+  ]
 }

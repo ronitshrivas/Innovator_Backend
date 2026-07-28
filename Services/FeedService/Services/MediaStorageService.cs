@@ -52,8 +52,16 @@ public class MediaStorageService : IMediaStorageService
     {
         if (string.IsNullOrEmpty(relativePath)) return string.Empty;
         if (relativePath.StartsWith("http")) return relativePath;
-        var baseUrl = _config["PublicBaseUrl"] ?? "http://localhost:8012";
-        return $"{baseUrl}{relativePath}";
+
+        // Everything is served under /media/. Migrated rows store paths like
+        // "post_media/x.jpg"; new uploads already produce "/media/...". Normalise
+        // both to a single "/media/..." path and prefix the public base.
+        var clean = relativePath.TrimStart('/');
+        if (!clean.StartsWith("media/"))
+            clean = $"media/{clean}";
+
+        var baseUrl = (_config["PublicBaseUrl"] ?? "http://localhost:8012").TrimEnd('/');
+        return $"{baseUrl}/{clean}";
     }
 
     private static bool IsVideo(string ext) =>
