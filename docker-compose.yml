@@ -139,6 +139,9 @@ services:
       Firebase__CredentialsPath: "/app/secrets/firebase-service-account.json"
     volumes:
       - ./secrets:/app/secrets:ro
+      # Persist admin-uploaded product images so redeploys don't wipe them,
+      # and serve them at /products/... via UseStaticFiles.
+      - ./uploads/ecommerce:/app/wwwroot/products
     ports:
       - "8004:8016"   # app-facing
       - "8016:8016"   # swagger/admin

@@ -596,8 +596,8 @@ public class AdminService : IAdminService
     {
         if (string.IsNullOrEmpty(path)) return null;
         if (path.StartsWith("http")) return path;
-        var baseUrl = _config["PublicBaseUrl"] ?? "http://localhost:8016";
-        return $"{baseUrl}{path}";
+        var baseUrl = (_config["PublicBaseUrl"] ?? "http://localhost:8016").TrimEnd('/');
+        return $"{baseUrl}/{path.TrimStart('/')}";
     }
 
     private static string Slugify(string value)

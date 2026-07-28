@@ -1,20 +1,12 @@
 ﻿<Properties StartupConfiguration="{9B7E4C33-2A1D-4F6E-B8C2-5D9A1E3F7C40}|Default">
-  <MonoDevelop.Ide.ItemProperties.Services.ResearchService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
-  <MonoDevelop.Ide.ItemProperties.ChatService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
   <MonoDevelop.Ide.ItemProperties.SearchService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
-  <MonoDevelop.Ide.DebuggingService.Breakpoints>
-    <BreakpointStore />
-  </MonoDevelop.Ide.DebuggingService.Breakpoints>
-  <MonoDevelop.Ide.ItemProperties.Services.ElearningService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
-  <MonoDevelop.Ide.ItemProperties.Services.EcommerceService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
-  <MonoDevelop.Ide.ItemProperties.AuthService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
-  <MonoDevelop.Ide.ItemProperties.ProfileService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
-  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Services/AuthService/Program.cs">
+  <MonoDevelop.Ide.ItemProperties.Services.EventsService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
+  <MultiItemStartupConfigurations />
+  <MonoDevelop.Ide.ItemProperties.FeedService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="Shared/Innovator.Shared/Services/FirebasePush.cs">
     <Files>
       <File FileName="Services/AuthService/Program.cs" Line="41" Column="1" />
-      <File FileName="Services/ProfileService/Program.cs" Line="24" Column="10" />
+      <File FileName="Services/ProfileService/Program.cs" />
       <File FileName="Services/SearchService/Program.cs" />
       <File FileName="Services/SearchService/appsettings.json" />
       <File FileName="Services/FeedService/HOW_TO_SETUP.md" />
@@ -25,24 +17,36 @@
       <File FileName="Services/EcommerceService/Data/EcommerceDbContext.cs" />
       <File FileName="Services/EcommerceService/appsettings.json" />
       <File FileName="Services/EcommerceService/ApiGateway_appsettings.json" />
-      <File FileName="Services/AuthService/appsettings.json" />
+      <File FileName="Services/AuthService/appsettings.json" Line="31" Column="32" />
       <File FileName="Services/ProfileService/appsettings.json" />
       <File FileName="Services/ResearchService/Program.cs" />
       <File FileName="Services/ResearchService/appsettings.json" />
+      <File FileName="Shared/Innovator.Shared/Services/FirebasePush.cs" Line="57" Column="24" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
         <State name="__root__">
-          <Node name="InnovatorBackend">
+          <Node name="InnovatorBackend" selected="True">
             <Node name="Services" expanded="True" />
             <Node name="AuthService" expanded="True" />
+            <Node name="Innovator.Shared" expanded="True">
+              <Node name="Services" expanded="True" />
+            </Node>
             <Node name="ProfileService" expanded="True" />
           </Node>
         </State>
       </Pad>
     </Pads>
   </MonoDevelop.Ide.Workbench>
-  <MonoDevelop.Ide.ItemProperties.FeedService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
-  <MultiItemStartupConfigurations />
-  <MonoDevelop.Ide.ItemProperties.Services.EventsService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
+  <MonoDevelop.Ide.ItemProperties.Services.ElearningService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.ItemProperties.ProfileService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.ItemProperties.Services.ResearchService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
+  <MonoDevelop.Ide.ItemProperties.Services.EcommerceService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
+  <MonoDevelop.Ide.ItemProperties.AuthService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
+  <MonoDevelop.Ide.ItemProperties.ChatService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
 </Properties>
