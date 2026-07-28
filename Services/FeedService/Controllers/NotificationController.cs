@@ -21,9 +21,8 @@ public class NotificationController : ControllerBase
                    ?? User.FindFirstValue("sub")!);
 
     // Bare array — matches the app's poller (accepts list or { results }).
-    // The app calls both /api/notifications and /api/notifications/.
+    // Trailing slashes are normalised globally so /api/notifications/ works too.
     [HttpGet]
-    [HttpGet("/api/notifications/")]
     public async Task<IActionResult> Get()
     {
         var items = await _notifications.GetForUserAsync(CurrentUserId);
@@ -31,7 +30,6 @@ public class NotificationController : ControllerBase
     }
 
     [HttpPost("{notificationId}/mark-as-read")]
-    [HttpPost("{notificationId}/mark-as-read/")]
     public async Task<IActionResult> MarkAsRead(string notificationId)
     {
         var result = await _notifications.MarkAsReadAsync(CurrentUserId, notificationId);
@@ -41,7 +39,6 @@ public class NotificationController : ControllerBase
     }
 
     [HttpPost("mark-all-as-read")]
-    [HttpPost("mark-all-as-read/")]
     public async Task<IActionResult> MarkAllAsRead()
     {
         await _notifications.MarkAllAsReadAsync(CurrentUserId);
@@ -51,7 +48,6 @@ public class NotificationController : ControllerBase
     // The list screen may DELETE a notification; treat delete as mark-read
     // (no destructive delete endpoint needed for the activity feed).
     [HttpDelete("{notificationId}")]
-    [HttpDelete("{notificationId}/")]
     public async Task<IActionResult> Delete(string notificationId)
     {
         await _notifications.MarkAsReadAsync(CurrentUserId, notificationId);
@@ -74,7 +70,6 @@ public class FeedFcmTokenController : ControllerBase
                    ?? User.FindFirstValue("sub")!);
 
     [HttpPost]
-    [HttpPost("/api/fcm-tokens/")]
     public async Task<IActionResult> Register([FromBody] FcmTokenRequest request)
     {
         var response = await _notifications.RegisterTokenAsync(CurrentUserId, request);
@@ -83,7 +78,6 @@ public class FeedFcmTokenController : ControllerBase
 
     // The app also PATCHes an existing token id; treat it as an upsert.
     [HttpPatch("{tokenId}")]
-    [HttpPatch("{tokenId}/")]
     public async Task<IActionResult> Update(string tokenId, [FromBody] FcmTokenRequest request)
     {
         var response = await _notifications.RegisterTokenAsync(CurrentUserId, request);
@@ -91,7 +85,6 @@ public class FeedFcmTokenController : ControllerBase
     }
 
     [HttpDelete("{tokenId}")]
-    [HttpDelete("{tokenId}/")]
     public async Task<IActionResult> Delete(string tokenId)
     {
         var result = await _notifications.DeleteTokenAsync(CurrentUserId, tokenId);

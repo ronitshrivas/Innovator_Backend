@@ -119,6 +119,16 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
     ");
 });
 
+// Normalise trailing slashes so the app's "/api/notifications/" style URLs
+// route to the canonical slash-less endpoints (keeps Swagger unambiguous).
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value;
+    if (!string.IsNullOrEmpty(path) && path.Length > 1 && path.EndsWith('/'))
+        context.Request.Path = path.TrimEnd('/');
+    await next();
+});
+
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors();
