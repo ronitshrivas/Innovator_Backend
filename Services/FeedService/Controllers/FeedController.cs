@@ -33,12 +33,16 @@ public class FeedController : ControllerBase
 
     [HttpPost("posts")]
     public async Task<IActionResult> CreatePost(
-        [FromForm] string content,
+        [FromForm] string? content,
         [FromForm] List<string>? categoryIds,
         [FromForm] string? sharedPostId,
         [FromForm] List<IFormFile>? media)
     {
-        var request = new CreatePostRequest(content, categoryIds, sharedPostId);
+        // A post needs either text or media.
+        if (string.IsNullOrWhiteSpace(content) && (media == null || media.Count == 0))
+            return BadRequest(new { message = "A post needs text or media." });
+
+        var request = new CreatePostRequest(content ?? string.Empty, categoryIds, sharedPostId);
         var result = await _feedService.CreatePostAsync(
             CurrentUserId, CurrentUsername, string.Empty, request, media);
         return result.Success ? StatusCode(201, result) : BadRequest(result);
