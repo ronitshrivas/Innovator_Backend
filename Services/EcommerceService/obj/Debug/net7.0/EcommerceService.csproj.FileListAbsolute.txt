@@ -60,3 +60,4 @@
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/EcommerceService/bin/Debug/net7.0/Google.Apis.Core.dll
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/EcommerceService/bin/Debug/net7.0/Microsoft.Bcl.AsyncInterfaces.dll
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/EcommerceService/bin/Debug/net7.0/Newtonsoft.Json.dll
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/EcommerceService/bin/Debug/net7.0/EcommerceService.staticwebassets.runtime.json
