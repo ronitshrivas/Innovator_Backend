@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using FeedService.Common;
 using FeedService.Data;
 using FeedService.Services;
+using Innovator.Shared.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -17,6 +18,8 @@ builder.Services.AddScoped<IFeedService, FeedBusinessService>();
 builder.Services.AddScoped<IReactionService, ReactionService>();
 builder.Services.AddScoped<ICommentService, CommentBusinessService>();
 builder.Services.AddScoped<IMediaStorageService, MediaStorageService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddFirebasePush(builder.Configuration);
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret is required.");
@@ -82,6 +85,38 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<FeedDbContext>();
     await db.Database.MigrateAsync();
+
+    // Social notifications + FCM tokens are created outside EF migrations so
+    // the feature ships without new migration files. Idempotent.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""Notifications"" (
+            ""Id"" uuid PRIMARY KEY,
+            ""UserId"" uuid NOT NULL,
+            ""Title"" varchar(200) NOT NULL DEFAULT '',
+            ""Message"" varchar(500) NOT NULL DEFAULT '',
+            ""Type"" varchar(50) NOT NULL DEFAULT '',
+            ""SenderId"" uuid NULL,
+            ""SenderUsername"" text NULL,
+            ""SenderAvatar"" text NULL,
+            ""RelatedPostId"" uuid NULL,
+            ""IsRead"" boolean NOT NULL DEFAULT false,
+            ""CreatedAt"" timestamptz NOT NULL DEFAULT now(),
+            ""UpdatedAt"" timestamptz NOT NULL DEFAULT now()
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_Notifications_User_Created""
+            ON ""Notifications"" (""UserId"", ""CreatedAt"");
+
+        CREATE TABLE IF NOT EXISTS ""FcmTokens"" (
+            ""Id"" uuid PRIMARY KEY,
+            ""UserId"" uuid NOT NULL,
+            ""Token"" text NOT NULL,
+            ""DeviceName"" text NULL,
+            ""CreatedAt"" timestamptz NOT NULL DEFAULT now(),
+            ""UpdatedAt"" timestamptz NOT NULL DEFAULT now()
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_FcmTokens_User_Token""
+            ON ""FcmTokens"" (""UserId"", ""Token"");
+    ");
 });
 
 app.UseSwagger();

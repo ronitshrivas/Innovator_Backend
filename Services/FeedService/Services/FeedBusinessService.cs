@@ -53,7 +53,11 @@ public class FeedBusinessService : IFeedService
 
         var results = posts.Select(p => MapToResponse(p, userId)).ToList();
 
-        return ApiResponse<FeedResponse>.Ok(new FeedResponse(results, total, null, null));
+        var hasNext = skip + posts.Count < total;
+        var next = hasNext ? $"/api/feed?page={page + 1}&pageSize={pageSize}" : null;
+        var previous = page > 1 ? $"/api/feed?page={page - 1}&pageSize={pageSize}" : null;
+
+        return ApiResponse<FeedResponse>.Ok(new FeedResponse(results, total, next, previous));
     }
 
     public async Task<ApiResponse<PostResponse>> CreatePostAsync(

@@ -24,8 +24,13 @@ public interface ICommentService
 public class CommentBusinessService : ICommentService
 {
     private readonly FeedDbContext _db;
+    private readonly INotificationService _notifications;
 
-    public CommentBusinessService(FeedDbContext db) => _db = db;
+    public CommentBusinessService(FeedDbContext db, INotificationService notifications)
+    {
+        _db = db;
+        _notifications = notifications;
+    }
 
     public async Task<ApiResponse<List<CommentResponse>>> GetCommentsAsync(Guid postId, int page)
     {
@@ -69,6 +74,21 @@ public class CommentBusinessService : ICommentService
         _db.Comments.Add(comment);
         await _db.SaveChangesAsync();
 
+        // Notify the post's author about the new comment.
+        var post = await _db.Posts.FindAsync(postId);
+        if (post != null)
+        {
+            await _notifications.CreateAsync(new CreateNotificationRequest(
+                UserId: post.AuthorId,
+                Title: username,
+                Message: $"{username} commented on your post.",
+                Type: "comment",
+                SenderId: authorId,
+                SenderUsername: username,
+                SenderAvatar: avatar,
+                RelatedPostId: postId));
+        }
+
         return ApiResponse<CommentResponse>.Ok(MapToResponse(comment));
     }
 
@@ -95,6 +115,17 @@ public class CommentBusinessService : ICommentService
 
         _db.Comments.Add(reply);
         await _db.SaveChangesAsync();
+
+        // Notify the parent comment's author about the reply.
+        await _notifications.CreateAsync(new CreateNotificationRequest(
+            UserId: parent.AuthorId,
+            Title: username,
+            Message: $"{username} replied to your comment.",
+            Type: "reply",
+            SenderId: authorId,
+            SenderUsername: username,
+            SenderAvatar: avatar,
+            RelatedPostId: parent.PostId));
 
         return ApiResponse<CommentResponse>.Ok(MapToResponse(reply));
     }

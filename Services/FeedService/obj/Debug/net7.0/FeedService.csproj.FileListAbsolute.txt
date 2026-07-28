@@ -1,3 +1,10 @@
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.csproj.AssemblyReference.cache
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.GeneratedMSBuildEditorConfig.editorconfig
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.AssemblyInfoInputs.cache
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.AssemblyInfo.cs
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.csproj.CoreCompileInputs.cache
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.MvcApplicationPartsAssemblyInfo.cs
+/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.MvcApplicationPartsAssemblyInfo.cache
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/bin/Debug/net7.0/ApiGateway_appsettings.json
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/bin/Debug/net7.0/appsettings.json
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/bin/Debug/net7.0/FeedService.staticwebassets.runtime.json
@@ -40,13 +47,6 @@
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/bin/Debug/net7.0/System.IdentityModel.Tokens.Jwt.dll
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/bin/Debug/net7.0/Innovator.Shared.dll
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/bin/Debug/net7.0/Innovator.Shared.pdb
-/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.csproj.AssemblyReference.cache
-/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.GeneratedMSBuildEditorConfig.editorconfig
-/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.AssemblyInfoInputs.cache
-/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.AssemblyInfo.cs
-/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.csproj.CoreCompileInputs.cache
-/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.MvcApplicationPartsAssemblyInfo.cs
-/Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/FeedService.MvcApplicationPartsAssemblyInfo.cache
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/staticwebassets/msbuild.FeedService.Microsoft.AspNetCore.StaticWebAssets.props
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/staticwebassets/msbuild.build.FeedService.props
 /Users/ronitshrivastav/Projects/InnovatorBackend/Services/FeedService/obj/Debug/net7.0/staticwebassets/msbuild.buildMultiTargeting.FeedService.props

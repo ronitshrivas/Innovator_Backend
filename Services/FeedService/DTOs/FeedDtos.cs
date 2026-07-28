@@ -102,3 +102,35 @@ public record FeedResponse(
     string? Next,
     string? Previous
 );
+
+// Shape matches the app's AppNotification.fromJson (snake_case keys):
+// id, title, message, type, sender_username, sender_avatar, sender,
+// related_post_id, created_at, is_read.
+public record NotificationDto(
+    string Id,
+    string Title,
+    string Message,
+    string Type,
+    string? SenderUsername,
+    string? SenderAvatar,
+    string? Sender,
+    string? RelatedPostId,
+    string CreatedAt,
+    bool IsRead
+);
+
+public record FcmTokenRequest(string Token, string? DeviceName);
+
+public record FcmTokenResponse(string Id, string Token, string? DeviceName);
+
+// Called internally by the feed/profile flows to raise a notification.
+public record CreateNotificationRequest(
+    Guid UserId,
+    string Title,
+    string Message,
+    string Type,
+    Guid? SenderId,
+    string? SenderUsername,
+    string? SenderAvatar,
+    Guid? RelatedPostId
+);

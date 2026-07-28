@@ -13,6 +13,8 @@ public class FeedDbContext : DbContext
     public DbSet<PostCategory> PostCategories => Set<PostCategory>();
     public DbSet<Reaction> Reactions => Set<Reaction>();
     public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<FeedFcmToken> FcmTokens => Set<FeedFcmToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -78,6 +80,21 @@ public class FeedDbContext : DbContext
              .WithMany(x => x.Replies)
              .HasForeignKey(x => x.ParentId)
              .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Notification>(n =>
+        {
+            n.HasKey(x => x.Id);
+            n.HasIndex(x => new { x.UserId, x.CreatedAt });
+            n.Property(x => x.Title).HasMaxLength(200);
+            n.Property(x => x.Message).HasMaxLength(500);
+            n.Property(x => x.Type).HasMaxLength(50);
+        });
+
+        builder.Entity<FeedFcmToken>(t =>
+        {
+            t.HasKey(x => x.Id);
+            t.HasIndex(x => new { x.UserId, x.Token }).IsUnique();
         });
 
         builder.Entity<Category>().HasData(

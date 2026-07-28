@@ -67,6 +67,10 @@ services:
       <<: *common-env
       ASPNETCORE_URLS: http://+:8011
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_profile;Username=innovator;Password=innovator123"
+      # Public host for avatar URLs so devices can load them (not localhost).
+      PublicBaseUrl: "http://36.253.137.34:8011"
+    volumes:
+      - ./uploads/profile:/app/wwwroot/avatars
     ports:
       - "8011:8011"
 
@@ -84,11 +88,14 @@ services:
       <<: *common-env
       ASPNETCORE_URLS: http://+:8012
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_feed;Username=innovator;Password=innovator123"
-      # Media is reached through the gateway (8005), which routes /media -> feed.
-      PublicBaseUrl: "http://36.253.137.34:8005"
+      # Media is served directly by this service on 8012 (gateway 8005 bypassed).
+      PublicBaseUrl: "http://36.253.137.34:8012"
+      # FCM push for social notifications (likes/comments/replies).
+      Firebase__CredentialsPath: "/app/secrets/firebase-service-account.json"
     volumes:
       # Persist post media across redeploys; served under /media via UseStaticFiles.
       - ./uploads/feed:/app/wwwroot/media
+      - ./secrets:/app/secrets:ro
     ports:
       - "8012:8012"
 

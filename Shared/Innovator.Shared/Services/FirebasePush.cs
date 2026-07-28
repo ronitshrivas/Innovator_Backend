@@ -9,11 +9,6 @@ namespace Innovator.Shared.Services;
 
 public interface IFirebasePushSender
 {
-    /// <summary>
-    /// Sends a notification to the given device tokens via FCM HTTP v1.
-    /// Returns the tokens that FCM reported as invalid/unregistered so the
-    /// caller can delete them. Never throws.
-    /// </summary>
     Task<IReadOnlyList<string>> SendToTokensAsync(
         IEnumerable<string> tokens,
         string title,
@@ -21,7 +16,6 @@ public interface IFirebasePushSender
         IDictionary<string, string>? data = null);
 }
 
-/// <summary>Sends real pushes through the Firebase Admin SDK (FCM HTTP v1).</summary>
 public sealed class FirebasePushSender : IFirebasePushSender
 {
     private readonly FirebaseApp _app;
@@ -47,7 +41,6 @@ public sealed class FirebasePushSender : IFirebasePushSender
         var messaging = FirebaseMessaging.GetMessaging(_app);
         var invalid = new List<string>();
 
-        // FCM accepts up to 500 tokens per multicast request.
         foreach (var batch in Chunk(list, 500))
         {
             var message = new MulticastMessage
@@ -86,7 +79,6 @@ public sealed class FirebasePushSender : IFirebasePushSender
     }
 }
 
-/// <summary>Used when no Firebase credentials are configured — logs and no-ops.</summary>
 public sealed class NoopPushSender : IFirebasePushSender
 {
     private readonly ILogger<NoopPushSender> _logger;
@@ -102,11 +94,6 @@ public sealed class NoopPushSender : IFirebasePushSender
 
 public static class FirebasePushServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers IFirebasePushSender. If Firebase:CredentialsPath points to a
-    /// readable service-account JSON, real pushes are sent; otherwise a safe
-    /// no-op sender is used so the service still runs without Firebase set up.
-    /// </summary>
     public static IServiceCollection AddFirebasePush(this IServiceCollection services, IConfiguration config)
     {
         var credentialsPath = config["Firebase:CredentialsPath"];

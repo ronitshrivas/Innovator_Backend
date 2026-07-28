@@ -15,8 +15,13 @@ public interface IReactionService
 public class ReactionService : IReactionService
 {
     private readonly FeedDbContext _db;
+    private readonly INotificationService _notifications;
 
-    public ReactionService(FeedDbContext db) => _db = db;
+    public ReactionService(FeedDbContext db, INotificationService notifications)
+    {
+        _db = db;
+        _notifications = notifications;
+    }
 
     public async Task<ApiResponse<ReactionResponse>> ToggleReactionAsync(
         Guid postId, Guid userId, string type)
@@ -57,6 +62,22 @@ public class ReactionService : IReactionService
 
         _db.Reactions.Add(reaction);
         await _db.SaveChangesAsync();
+
+        // Notify the post's author that someone reacted.
+        var actor = await _db.Posts
+            .Where(p => p.AuthorId == userId)
+            .Select(p => new { p.Username, p.Avatar })
+            .FirstOrDefaultAsync();
+        var actorName = actor?.Username ?? "Someone";
+        await _notifications.CreateAsync(new CreateNotificationRequest(
+            UserId: post.AuthorId,
+            Title: actorName,
+            Message: $"{actorName} reacted to your post.",
+            Type: "like",
+            SenderId: userId,
+            SenderUsername: actorName,
+            SenderAvatar: actor?.Avatar,
+            RelatedPostId: postId));
 
         return ApiResponse<ReactionResponse>.Ok(
             new ReactionResponse(

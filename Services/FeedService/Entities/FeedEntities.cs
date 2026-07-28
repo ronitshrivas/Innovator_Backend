@@ -66,3 +66,25 @@ public class Comment : BaseEntity
     public Comment? Parent { get; set; }
     public List<Comment> Replies { get; set; } = new();
 }
+
+// Social notification (like / comment / follow) shown in the app's activity feed.
+public class Notification : BaseEntity
+{
+    public Guid UserId { get; set; }          // recipient
+    public string Title { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // like | comment | reply | follow
+    public Guid? SenderId { get; set; }
+    public string? SenderUsername { get; set; }
+    public string? SenderAvatar { get; set; }
+    public Guid? RelatedPostId { get; set; }
+    public bool IsRead { get; set; } = false;
+}
+
+// FCM device token registered for social pushes.
+public class FeedFcmToken : BaseEntity
+{
+    public Guid UserId { get; set; }
+    public string Token { get; set; } = string.Empty;
+    public string? DeviceName { get; set; }
+}
