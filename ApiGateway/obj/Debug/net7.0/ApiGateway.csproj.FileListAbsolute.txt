@@ -30,6 +30,7 @@
 /Users/ronitshrivastav/Downloads/InnovatorBackend_fixed/ApiGateway/obj/Debug/net7.0/ApiGateway.genruntimeconfig.cache
 /Users/ronitshrivastav/Downloads/InnovatorBackend_fixed/ApiGateway/obj/Debug/net7.0/ref/ApiGateway.dll
 /Users/ronitshrivastav/Projects/InnovatorBackend/ApiGateway/bin/Debug/net7.0/appsettings.json
+/Users/ronitshrivastav/Projects/InnovatorBackend/ApiGateway/bin/Debug/net7.0/appsettings.Production.json
 /Users/ronitshrivastav/Projects/InnovatorBackend/ApiGateway/bin/Debug/net7.0/ApiGateway
 /Users/ronitshrivastav/Projects/InnovatorBackend/ApiGateway/bin/Debug/net7.0/ApiGateway.deps.json
 /Users/ronitshrivastav/Projects/InnovatorBackend/ApiGateway/bin/Debug/net7.0/ApiGateway.runtimeconfig.json
@@ -60,4 +61,3 @@
 /Users/ronitshrivastav/Projects/InnovatorBackend/ApiGateway/obj/Debug/net7.0/ApiGateway.pdb
 /Users/ronitshrivastav/Projects/InnovatorBackend/ApiGateway/obj/Debug/net7.0/ApiGateway.genruntimeconfig.cache
 /Users/ronitshrivastav/Projects/InnovatorBackend/ApiGateway/obj/Debug/net7.0/ref/ApiGateway.dll
-/Users/ronitshrivastav/Projects/InnovatorBackend/ApiGateway/bin/Debug/net7.0/appsettings.Production.json
