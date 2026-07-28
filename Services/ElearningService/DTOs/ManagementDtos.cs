@@ -141,6 +141,42 @@ public record VendorSummaryDto(
     int EnrollmentCount
 );
 
+// ---------- Vendor accounts (admin creates, vendor logs in) ----------
+
+public record VendorAccountDto(
+    string Id,
+    string Name,
+    string Email,
+    string Username,
+    bool IsActive,
+    string CreatedAt
+);
+
+public record CreateVendorRequest(
+    [Required, MaxLength(150)] string Name,
+    [Required, EmailAddress] string Email,
+    [Required, MaxLength(100)] string Username,
+    [Required, MinLength(6)] string Password
+);
+
+public record UpdateVendorRequest(
+    string? Name,
+    string? Email,
+    string? Password,
+    bool? IsActive
+);
+
+public record VendorLoginRequest(
+    [Required] string Username,
+    [Required] string Password
+);
+
+public record VendorLoginResponse(
+    string AccessToken,
+    string RefreshToken,
+    VendorAccountDto Vendor
+);
+
 // ---------- Dashboard ----------
 
 public record ManageDashboardDto(

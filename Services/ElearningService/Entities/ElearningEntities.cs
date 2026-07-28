@@ -2,6 +2,18 @@ using Innovator.Shared.Entities;
 
 namespace ElearningService.Entities;
 
+// A vendor is an e-learning content provider account the admin creates and that
+// can log in to manage its own courses. The vendor's Id (as a string) is stored
+// on each Course.Vendor so ownership checks in VendorScope keep working.
+public class Vendor : BaseEntity
+{
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+}
+
 public class Category : BaseEntity
 {
     public string Name { get; set; } = string.Empty;

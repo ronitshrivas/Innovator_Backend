@@ -7,6 +7,7 @@ public class ElearningDbContext : DbContext
 {
     public ElearningDbContext(DbContextOptions<ElearningDbContext> options) : base(options) { }
 
+    public DbSet<Vendor> Vendors => Set<Vendor>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<CourseContent> CourseContents => Set<CourseContent>();
@@ -48,5 +49,11 @@ public class ElearningDbContext : DbContext
 
         modelBuilder.Entity<FcmToken>()
             .HasIndex(t => t.Token);
+
+        modelBuilder.Entity<Vendor>(entity =>
+        {
+            entity.HasIndex(v => v.Username).IsUnique();
+            entity.HasIndex(v => v.Email);
+        });
     }
 }

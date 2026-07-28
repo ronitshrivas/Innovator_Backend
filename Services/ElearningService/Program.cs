@@ -18,6 +18,7 @@ builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IElearningAdminService, ElearningAdminService>();
+builder.Services.AddScoped<IVendorService, VendorService>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret is required.");
@@ -85,6 +86,23 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ElearningDbContext>();
     await db.Database.EnsureCreatedAsync();
+
+    // EnsureCreated won't add new tables to a DB that already exists, so the
+    // vendor-accounts table is created explicitly here. Idempotent.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""Vendors"" (
+            ""Id"" uuid PRIMARY KEY,
+            ""Name"" text NOT NULL DEFAULT '',
+            ""Email"" text NOT NULL DEFAULT '',
+            ""Username"" text NOT NULL DEFAULT '',
+            ""PasswordHash"" text NOT NULL DEFAULT '',
+            ""IsActive"" boolean NOT NULL DEFAULT true,
+            ""CreatedAt"" timestamptz NOT NULL DEFAULT now(),
+            ""UpdatedAt"" timestamptz NOT NULL DEFAULT now()
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Vendors_Username"" ON ""Vendors"" (""Username"");
+    ");
+
     await ElearningSeeder.SeedAsync(db);
 });
 

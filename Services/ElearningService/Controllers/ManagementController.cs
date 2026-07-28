@@ -144,8 +144,56 @@ public class AdminElearningController : ManagementControllerBase
     public async Task<IActionResult> DeleteCategory(Guid id) =>
         Respond(await Service.DeleteCategoryAsync(id));
 
-    // ----- Vendors -----
+    // ----- Vendor summaries (computed from courses) -----
 
     [HttpGet("vendors")]
     public async Task<IActionResult> GetVendors() => Respond(await Service.GetVendorsAsync());
+}
+
+// ---------------------------------------------------------------------------
+// Vendor accounts: admin creates/manages them; vendors log in to get a token.
+// ---------------------------------------------------------------------------
+
+[ApiController]
+[Route("api/admin/elearning/vendor-accounts")]
+[Authorize(Roles = "admin")]
+public class AdminVendorAccountController : ControllerBase
+{
+    private readonly IVendorService _vendors;
+
+    public AdminVendorAccountController(IVendorService vendors) => _vendors = vendors;
+
+    private IActionResult Respond<T>(ApiResponse<T> r) => r.Success ? Ok(r) : BadRequest(r);
+
+    [HttpGet]
+    public async Task<IActionResult> List() => Respond(await _vendors.ListAsync());
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateVendorRequest request) =>
+        Respond(await _vendors.CreateAsync(request));
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateVendorRequest request) =>
+        Respond(await _vendors.UpdateAsync(id, request));
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id) =>
+        Respond(await _vendors.DeleteAsync(id));
+}
+
+[ApiController]
+[Route("api/vendor/auth")]
+public class VendorAuthController : ControllerBase
+{
+    private readonly IVendorService _vendors;
+
+    public VendorAuthController(IVendorService vendors) => _vendors = vendors;
+
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Login([FromBody] VendorLoginRequest request)
+    {
+        var result = await _vendors.LoginAsync(request);
+        return result.Success ? Ok(result) : Unauthorized(result);
+    }
 }
