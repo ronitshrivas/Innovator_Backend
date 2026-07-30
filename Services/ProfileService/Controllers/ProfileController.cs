@@ -141,5 +141,18 @@ public class InternalProfileController : ControllerBase
         return Ok();
     }
 
+    // Batch avatar lookup so the feed can show each author's current avatar.
+    [HttpPost("profiles/avatars")]
+    public async Task<IActionResult> GetAvatars([FromBody] AvatarLookupRequest request)
+    {
+        var ids = new List<Guid>();
+        foreach (var s in request.AuthUserIds ?? new())
+            if (Guid.TryParse(s, out var g)) ids.Add(g);
+
+        var map = await _profileService.GetAvatarsAsync(ids);
+        return Ok(map);
+    }
+
     public record EnsureProfileRequest(Guid AuthUserId, string Username, string Email, string Role);
+    public record AvatarLookupRequest(List<string>? AuthUserIds);
 }

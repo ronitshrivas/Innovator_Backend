@@ -20,6 +20,7 @@ public interface IProfileService
     Task<ApiResponse<BlockActionResponse>> ToggleBlockAsync(Guid blockerId, Guid targetAuthUserId);
     Task<ApiResponse<List<BlockedUserDto>>> GetBlockedListAsync(Guid authUserId);
     Task EnsureProfileExistsAsync(Guid authUserId, string username, string email, string role);
+    Task<Dictionary<string, string?>> GetAvatarsAsync(IEnumerable<Guid> authUserIds);
 }
 
 public class ProfileBusinessService : IProfileService
@@ -56,9 +57,7 @@ public class ProfileBusinessService : IProfileService
         if (profile == null)
             return ApiResponse<ProfileResponse>.Fail("User not found.");
 
-        bool isFollowed = requesterId.HasValue && profile.Followers
-            .Any(f => f.FollowerId == requesterId.Value && f.Status == FollowStatus.Accepted);
-
+        var isFollowed = await IsFollowedByAsync(profile, requesterId);
         return ApiResponse<ProfileResponse>.Ok(MapToResponse(profile, isFollowed));
     }
 
@@ -72,9 +71,7 @@ public class ProfileBusinessService : IProfileService
         if (profile == null)
             return ApiResponse<ProfileResponse>.Fail("User not found.");
 
-        bool isFollowed = requesterId.HasValue && profile.Followers
-            .Any(f => f.FollowerId == requesterId.Value && f.Status == FollowStatus.Accepted);
-
+        var isFollowed = await IsFollowedByAsync(profile, requesterId);
         return ApiResponse<ProfileResponse>.Ok(MapToResponse(profile, isFollowed));
     }
 
@@ -120,6 +117,23 @@ public class ProfileBusinessService : IProfileService
 
         var publicUrl = _avatarStorage.ResolvePublicUrl(relativePath);
         return ApiResponse<string>.Ok(publicUrl, "Avatar updated.");
+    }
+
+    // requesterId is an AUTH user id; follows store PROFILE ids. Resolve the
+    // requester's profile id first, then check if they follow this profile.
+    private async Task<bool> IsFollowedByAsync(UserProfile target, Guid? requesterAuthId)
+    {
+        if (!requesterAuthId.HasValue) return false;
+
+        var requesterProfileId = await _db.UserProfiles
+            .Where(p => p.AuthUserId == requesterAuthId.Value)
+            .Select(p => (Guid?)p.Id)
+            .FirstOrDefaultAsync();
+
+        if (requesterProfileId is null) return false;
+
+        return target.Followers.Any(f =>
+            f.FollowerId == requesterProfileId.Value && f.Status == FollowStatus.Accepted);
     }
 
     public async Task<ApiResponse<FollowActionResponse>> ToggleFollowAsync(Guid followerAuthId, Guid targetAuthUserId)
@@ -264,6 +278,23 @@ public class ProfileBusinessService : IProfileService
             _avatarStorage.ResolvePublicUrl(b.Blocked.AvatarPath))).ToList();
 
         return ApiResponse<List<BlockedUserDto>>.Ok(list);
+    }
+
+    // Returns a map of auth_user_id -> resolved avatar URL for the given users,
+    // so other services (e.g. feed) can show each author's current avatar.
+    public async Task<Dictionary<string, string?>> GetAvatarsAsync(IEnumerable<Guid> authUserIds)
+    {
+        var ids = authUserIds.Distinct().ToList();
+        if (ids.Count == 0) return new();
+
+        var rows = await _db.UserProfiles
+            .Where(p => ids.Contains(p.AuthUserId))
+            .Select(p => new { p.AuthUserId, p.AvatarPath })
+            .ToListAsync();
+
+        return rows.ToDictionary(
+            r => r.AuthUserId.ToString(),
+            r => (string?)_avatarStorage.ResolvePublicUrl(r.AvatarPath));
     }
 
     public async Task EnsureProfileExistsAsync(Guid authUserId, string username, string email, string role)

@@ -116,6 +116,32 @@ public static class ElearningSeeder
             }
         };
 
+        var uiuxs = new Course
+        {
+            Vendor = "innovator-studio",
+            VendorName = "Innovator Studio",
+            Category = design,
+            Title = "UI/UX Design Fundamentals and Advance",
+            Description = "Learn the principles of user-centered design and prototyping.",
+            Price = 0m,
+            CourseType = "free",
+            IsPublished = true,
+            Thumbnail = null,
+            Contents = new List<CourseContent>
+            {
+                new()
+                {
+                    Title = "Design Thinking Basics",
+                    InstructorName = "Priya Karki",
+                    VideoUrl = "https://www.youtube.com/embed/6lmvCqvmjfE",
+                    Duration = 700,
+                    CourseLevel = "beginner",
+                    IsPreview = true,
+                    Order = 1
+                }
+            }
+        };
+
         db.Courses.AddRange(flutter, dotnet, uiux);
         await db.SaveChangesAsync();
     }

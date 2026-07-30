@@ -85,6 +85,7 @@ public abstract class ManagementControllerBase : ControllerBase
     public async Task<IActionResult> UpdateContent(Guid courseId, Guid contentId, [FromBody] UpdateContentRequest request) =>
         Respond(await Service.UpdateContentAsync(Scope, courseId, contentId, request));
 
+
     [HttpDelete("courses/{courseId:guid}/contents/{contentId:guid}")]
     public async Task<IActionResult> DeleteContent(Guid courseId, Guid contentId) =>
         Respond(await Service.DeleteContentAsync(Scope, courseId, contentId));

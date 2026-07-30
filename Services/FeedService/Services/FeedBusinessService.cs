@@ -28,11 +28,16 @@ public class FeedBusinessService : IFeedService
 {
     private readonly FeedDbContext _db;
     private readonly IMediaStorageService _mediaStorage;
+    private readonly IProfileAvatarResolver _avatarResolver;
 
-    public FeedBusinessService(FeedDbContext db, IMediaStorageService mediaStorage)
+    public FeedBusinessService(
+        FeedDbContext db,
+        IMediaStorageService mediaStorage,
+        IProfileAvatarResolver avatarResolver)
     {
         _db = db;
         _mediaStorage = mediaStorage;
+        _avatarResolver = avatarResolver;
     }
 
     public async Task<ApiResponse<FeedResponse>> GetFeedAsync(Guid userId, int page, int pageSize)
@@ -52,6 +57,18 @@ public class FeedBusinessService : IFeedService
         var posts = await query.Skip(skip).Take(pageSize).ToListAsync();
 
         var results = posts.Select(p => MapToResponse(p, userId)).ToList();
+
+        // Overwrite each author's (possibly stale/blank) stored avatar with their
+        // current one from the profile service, so avatar changes show in the feed.
+        var authorIds = posts.Select(p => p.AuthorId).Distinct();
+        var avatars = await _avatarResolver.ResolveAsync(authorIds);
+        if (avatars.Count > 0)
+        {
+            results = results.Select(r =>
+                avatars.TryGetValue(r.UserId, out var url) && !string.IsNullOrEmpty(url)
+                    ? r with { Avatar = url }
+                    : r).ToList();
+        }
 
         var hasNext = skip + posts.Count < total;
         var next = hasNext ? $"/api/feed?page={page + 1}&pageSize={pageSize}" : null;
@@ -258,10 +275,14 @@ public class FeedBusinessService : IFeedService
 
         var total = await _db.Posts.CountAsync(p => p.AuthorId == authorId && !p.IsReel);
 
-        return ApiResponse<FeedResponse>.Ok(
-            new FeedResponse(
-                posts.Select(p => MapToResponse(p, requesterId)).ToList(),
-                total, null, null));
+        var results = posts.Select(p => MapToResponse(p, requesterId)).ToList();
+
+        // Show the author's current avatar on their own posts.
+        var avatars = await _avatarResolver.ResolveAsync(new[] { authorId });
+        if (avatars.TryGetValue(authorId.ToString(), out var url) && !string.IsNullOrEmpty(url))
+            results = results.Select(r => r with { Avatar = url }).ToList();
+
+        return ApiResponse<FeedResponse>.Ok(new FeedResponse(results, total, null, null));
     }
 
     public async Task<ApiResponse<List<CategoryDto>>> GetCategoriesAsync()

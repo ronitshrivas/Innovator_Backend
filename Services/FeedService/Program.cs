@@ -21,6 +21,15 @@ builder.Services.AddScoped<IMediaStorageService, MediaStorageService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddFirebasePush(builder.Configuration);
 
+// Used to resolve authors' current avatars from the profile service.
+builder.Services.AddHttpClient("profile", c =>
+{
+    var baseUrl = builder.Configuration["ProfileServiceUrl"] ?? "http://profile-service:8011";
+    c.BaseAddress = new Uri(baseUrl);
+    c.Timeout = TimeSpan.FromSeconds(5);
+});
+builder.Services.AddScoped<IProfileAvatarResolver, ProfileAvatarResolver>();
+
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret is required.");
 
