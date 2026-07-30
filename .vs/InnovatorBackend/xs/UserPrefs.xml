@@ -8,12 +8,12 @@
   <MonoDevelop.Ide.ItemProperties.Services.ResearchService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
   <MonoDevelop.Ide.ItemProperties.FeedService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
   <MonoDevelop.Ide.ItemProperties.ProfileService PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Services/SearchService/Data/SearchDbContext.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="Services/AuthService/Program.cs">
     <Files>
-      <File FileName="Services/AuthService/Program.cs" Line="80" Column="1" />
+      <File FileName="Services/AuthService/Program.cs" Line="79" Column="1" />
       <File FileName="Services/ProfileService/Program.cs" />
       <File FileName="Services/SearchService/Program.cs" />
-      <File FileName="Services/SearchService/appsettings.json" Line="6" Column="80" />
+      <File FileName="Services/SearchService/appsettings.json" />
       <File FileName="Services/FeedService/HOW_TO_SETUP.md" />
       <File FileName="Services/FeedService/appsettings.json" />
       <File FileName="Services/ChatService/ApiGateway_appsettings.json" />
@@ -29,12 +29,15 @@
       <File FileName="Shared/Innovator.Shared/Services/FirebasePush.cs" />
       <File FileName="Services/FeedService/Program.cs" />
       <File FileName="Services/ElearningService/Program.cs" />
-      <File FileName="Services/SearchService/Data/SearchDbContext.cs" Line="10" Column="20" />
+      <File FileName="Services/SearchService/Data/SearchDbContext.cs" Line="16" Column="6" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
         <State name="__root__">
           <Node name="InnovatorBackend" expanded="True">
+            <Node name="AuthService" expanded="True">
+              <Node name="Program.cs" selected="True" />
+            </Node>
             <Node name="SearchService" expanded="True">
               <Node name="Data" expanded="True" />
             </Node>
