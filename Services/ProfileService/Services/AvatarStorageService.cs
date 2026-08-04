@@ -1,5 +1,5 @@
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
 
 namespace ProfileService.Services;
@@ -24,23 +24,39 @@ public class AvatarStorageService : IAvatarStorageService
 
     public async Task<string> SaveAvatarAsync(IFormFile file, string username)
     {
-        if (file.Length > 5 * 1024 * 1024)
-            throw new InvalidOperationException("Avatar must be smaller than 5MB.");
+        // Allow larger uploads — iPhone photos are often 8–12 MB.
+        if (file.Length > 15 * 1024 * 1024)
+            throw new InvalidOperationException("Avatar must be smaller than 15MB.");
 
         var uploadsDir = Path.Combine(_env.WebRootPath ?? "wwwroot", "avatars");
         Directory.CreateDirectory(uploadsDir);
 
-        var fileName = $"{username}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.webp";
+        // Always store as JPEG regardless of the uploaded format (png, jpg,
+        // webp, bmp, gif, tga…). ImageSharp decodes the input and re-encodes.
+        var fileName = $"{username}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.jpg";
         var filePath = Path.Combine(uploadsDir, fileName);
 
-        using var image = await Image.LoadAsync(file.OpenReadStream());
-        image.Mutate(x => x.Resize(new ResizeOptions
+        Image image;
+        try
         {
-            Size = new Size(256, 256),
-            Mode = ResizeMode.Crop
-        }));
+            image = await Image.LoadAsync(file.OpenReadStream());
+        }
+        catch
+        {
+            // Unsupported format (e.g. HEIC that wasn't converted client-side).
+            throw new InvalidOperationException(
+                "Unsupported image format. Please upload a JPG or PNG.");
+        }
 
-        await image.SaveAsync(filePath, new WebpEncoder { Quality = 85 });
+        using (image)
+        {
+            image.Mutate(x => x.Resize(new ResizeOptions
+            {
+                Size = new Size(256, 256),
+                Mode = ResizeMode.Crop
+            }));
+            await image.SaveAsync(filePath, new JpegEncoder { Quality = 88 });
+        }
 
         return $"/avatars/{fileName}";
     }

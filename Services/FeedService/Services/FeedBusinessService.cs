@@ -21,6 +21,7 @@ public interface IFeedService
         Guid authorId, string username, string avatar,
         string caption, IFormFile videoFile);
     Task<ApiResponse<FeedResponse>> GetUserPostsAsync(Guid authorId, Guid requesterId, int page, int pageSize);
+    Task<ApiResponse<FeedResponse>> GetRepostsAsync(Guid postId, Guid requesterId, int page, int pageSize);
     Task<ApiResponse<List<CategoryDto>>> GetCategoriesAsync();
 }
 
@@ -58,16 +59,22 @@ public class FeedBusinessService : IFeedService
 
         var results = posts.Select(p => MapToResponse(p, userId)).ToList();
 
-        // Overwrite each author's (possibly stale/blank) stored avatar with their
-        // current one from the profile service, so avatar changes show in the feed.
+        // Enrich each post with the author's current avatar, occupation and
+        // whether the viewer follows them (resolved from the profile service).
         var authorIds = posts.Select(p => p.AuthorId).Distinct();
-        var avatars = await _avatarResolver.ResolveAsync(authorIds);
-        if (avatars.Count > 0)
+        var authors = await _avatarResolver.ResolveAuthorsAsync(authorIds, userId);
+        if (authors.Count > 0)
         {
             results = results.Select(r =>
-                avatars.TryGetValue(r.UserId, out var url) && !string.IsNullOrEmpty(url)
-                    ? r with { Avatar = url }
-                    : r).ToList();
+            {
+                if (!authors.TryGetValue(r.UserId, out var info)) return r;
+                return r with
+                {
+                    Avatar = string.IsNullOrEmpty(info.Avatar) ? r.Avatar : info.Avatar,
+                    Occupation = info.Occupation,
+                    IsFollowed = info.IsFollowed,
+                };
+            }).ToList();
         }
 
         var hasNext = skip + posts.Count < total;
@@ -144,7 +151,24 @@ public class FeedBusinessService : IFeedService
     {
         var post = await GetPostWithIncludes(postId);
         if (post == null) return ApiResponse<PostResponse>.Fail("Post not found.");
-        return ApiResponse<PostResponse>.Ok(MapToResponse(post, requesterId));
+
+        var result = MapToResponse(post, requesterId);
+
+        // Enrich with the author's current avatar/occupation/follow so a post
+        // opened from a notification looks identical to the feed.
+        var authors = await _avatarResolver.ResolveAuthorsAsync(
+            new[] { post.AuthorId }, requesterId);
+        if (authors.TryGetValue(post.AuthorId.ToString(), out var info))
+        {
+            result = result with
+            {
+                Avatar = string.IsNullOrEmpty(info.Avatar) ? result.Avatar : info.Avatar,
+                Occupation = info.Occupation,
+                IsFollowed = info.IsFollowed,
+            };
+        }
+
+        return ApiResponse<PostResponse>.Ok(result);
     }
 
     public async Task<ApiResponse<PostResponse>> UpdatePostAsync(
@@ -277,10 +301,56 @@ public class FeedBusinessService : IFeedService
 
         var results = posts.Select(p => MapToResponse(p, requesterId)).ToList();
 
-        // Show the author's current avatar on their own posts.
-        var avatars = await _avatarResolver.ResolveAsync(new[] { authorId });
-        if (avatars.TryGetValue(authorId.ToString(), out var url) && !string.IsNullOrEmpty(url))
-            results = results.Select(r => r with { Avatar = url }).ToList();
+        // Enrich the author's own posts with current avatar/occupation/follow.
+        var authors = await _avatarResolver.ResolveAuthorsAsync(new[] { authorId }, requesterId);
+        if (authors.TryGetValue(authorId.ToString(), out var info))
+        {
+            results = results.Select(r => r with
+            {
+                Avatar = string.IsNullOrEmpty(info.Avatar) ? r.Avatar : info.Avatar,
+                Occupation = info.Occupation,
+                IsFollowed = info.IsFollowed,
+            }).ToList();
+        }
+
+        return ApiResponse<FeedResponse>.Ok(new FeedResponse(results, total, null, null));
+    }
+
+    // Posts that reposted a given post (the repost list).
+    public async Task<ApiResponse<FeedResponse>> GetRepostsAsync(
+        Guid postId, Guid requesterId, int page, int pageSize)
+    {
+        var skip = (page - 1) * pageSize;
+
+        var query = _db.Posts.Where(p => p.SharedPostId == postId);
+        var total = await query.CountAsync();
+
+        var posts = await query
+            .Include(p => p.Media)
+            .Include(p => p.Reactions)
+            .Include(p => p.Comments)
+            .Include(p => p.SharedPost).ThenInclude(sp => sp != null ? sp.Media : null)
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip(skip).Take(pageSize)
+            .ToListAsync();
+
+        var results = posts.Select(p => MapToResponse(p, requesterId)).ToList();
+
+        var authorIds = posts.Select(p => p.AuthorId).Distinct();
+        var authors = await _avatarResolver.ResolveAuthorsAsync(authorIds, requesterId);
+        if (authors.Count > 0)
+        {
+            results = results.Select(r =>
+            {
+                if (!authors.TryGetValue(r.UserId, out var info)) return r;
+                return r with
+                {
+                    Avatar = string.IsNullOrEmpty(info.Avatar) ? r.Avatar : info.Avatar,
+                    Occupation = info.Occupation,
+                    IsFollowed = info.IsFollowed,
+                };
+            }).ToList();
+        }
 
         return ApiResponse<FeedResponse>.Ok(new FeedResponse(results, total, null, null));
     }
@@ -332,6 +402,7 @@ public class FeedBusinessService : IFeedService
             UserId: post.AuthorId.ToString(),
             Username: post.Username,
             Avatar: _mediaStorage.ResolvePublicUrl(post.Avatar),
+            Occupation: null,
             Content: post.Content,
             Type: post.Type,
             IsReel: post.IsReel,

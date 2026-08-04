@@ -52,6 +52,7 @@ public record PostResponse(
     string UserId,
     string Username,
     string Avatar,
+    string? Occupation,
     string Content,
     string Type,
     bool IsReel,

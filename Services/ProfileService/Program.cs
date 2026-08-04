@@ -80,6 +80,13 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ProfileDbContext>();
     await db.Database.MigrateAsync();
+
+    // New multi-value profile columns added outside EF migrations. Idempotent.
+    await db.Database.ExecuteSqlRawAsync(@"
+        ALTER TABLE ""UserProfiles"" ADD COLUMN IF NOT EXISTS ""EducationsJson"" text NOT NULL DEFAULT '[]';
+        ALTER TABLE ""UserProfiles"" ADD COLUMN IF NOT EXISTS ""OccupationsJson"" text NOT NULL DEFAULT '[]';
+        ALTER TABLE ""UserProfiles"" ADD COLUMN IF NOT EXISTS ""LinksJson"" text NOT NULL DEFAULT '[]';
+    ");
 });
 
 app.UseSwagger();

@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ProfileService.DTOs;
 
+public record ProfileLink(string Label, string Url);
+
 public record UpdateProfileRequest(
     string? FullName,
     string? Bio,
@@ -11,7 +13,12 @@ public record UpdateProfileRequest(
     string? Address,
     string? Education,
     string? Occupation,
-    List<string>? Interests
+    List<string>? Interests,
+    // Multi-value professional detail (like LinkedIn). Each is optional; when
+    // provided it replaces the stored list.
+    List<string>? Educations,
+    List<string>? Occupations,
+    List<ProfileLink>? Links
 );
 
 public record ProfileResponse(
@@ -30,6 +37,9 @@ public record ProfileResponse(
     string? Education,
     string? Occupation,
     List<string> Interests,
+    List<string> Educations,
+    List<string> Occupations,
+    List<ProfileLink> Links,
     int FollowersCount,
     int FollowingCount,
     bool IsFollowed,

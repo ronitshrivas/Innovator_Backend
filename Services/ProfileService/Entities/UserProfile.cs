@@ -18,6 +18,14 @@ public class UserProfile : BaseEntity
     public string? Education { get; set; }
     public string? Occupation { get; set; }
     public string InterestsJson { get; set; } = "[]";
+
+    // Multi-value professional detail, stored as JSON arrays so the app can
+    // show several entries (like LinkedIn). Single Education/Occupation above
+    // are kept for backward compatibility.
+    public string EducationsJson { get; set; } = "[]";   // ["MSc CS, ...", ...]
+    public string OccupationsJson { get; set; } = "[]";  // ["Engineer @X", ...]
+    public string LinksJson { get; set; } = "[]";        // [{"label":"LinkedIn","url":"..."}]
+
     public bool IsActive { get; set; } = true;
 
     public List<Follow> Followers { get; set; } = new();

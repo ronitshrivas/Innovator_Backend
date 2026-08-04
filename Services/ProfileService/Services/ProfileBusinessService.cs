@@ -21,7 +21,12 @@ public interface IProfileService
     Task<ApiResponse<List<BlockedUserDto>>> GetBlockedListAsync(Guid authUserId);
     Task EnsureProfileExistsAsync(Guid authUserId, string username, string email, string role);
     Task<Dictionary<string, string?>> GetAvatarsAsync(IEnumerable<Guid> authUserIds);
+    Task<Dictionary<string, AuthorInfo>> GetAuthorInfoAsync(IEnumerable<Guid> authUserIds, Guid? requesterId);
 }
+
+/// Compact per-author info the feed embeds: current avatar, occupation and
+/// whether the requesting user follows them.
+public record AuthorInfo(string? Avatar, string? Occupation, bool IsFollowed);
 
 public class ProfileBusinessService : IProfileService
 {
@@ -95,6 +100,12 @@ public class ProfileBusinessService : IProfileService
         if (request.Occupation is not null) profile.Occupation = request.Occupation;
         if (request.Interests is not null)
             profile.InterestsJson = JsonSerializer.Serialize(request.Interests);
+        if (request.Educations is not null)
+            profile.EducationsJson = JsonSerializer.Serialize(request.Educations);
+        if (request.Occupations is not null)
+            profile.OccupationsJson = JsonSerializer.Serialize(request.Occupations);
+        if (request.Links is not null)
+            profile.LinksJson = JsonSerializer.Serialize(request.Links);
 
         profile.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -297,6 +308,47 @@ public class ProfileBusinessService : IProfileService
             r => (string?)_avatarStorage.ResolvePublicUrl(r.AvatarPath));
     }
 
+    // Batch author info for the feed: avatar + occupation + is_followed.
+    public async Task<Dictionary<string, AuthorInfo>> GetAuthorInfoAsync(
+        IEnumerable<Guid> authUserIds, Guid? requesterId)
+    {
+        var ids = authUserIds.Distinct().ToList();
+        if (ids.Count == 0) return new();
+
+        var rows = await _db.UserProfiles
+            .Where(p => ids.Contains(p.AuthUserId))
+            .Select(p => new { p.Id, p.AuthUserId, p.AvatarPath, p.Occupation })
+            .ToListAsync();
+
+        // Which of these profiles does the requester follow?
+        var followedProfileIds = new HashSet<Guid>();
+        if (requesterId.HasValue)
+        {
+            var requesterProfileId = await _db.UserProfiles
+                .Where(p => p.AuthUserId == requesterId.Value)
+                .Select(p => (Guid?)p.Id)
+                .FirstOrDefaultAsync();
+
+            if (requesterProfileId is not null)
+            {
+                var targetProfileIds = rows.Select(r => r.Id).ToList();
+                followedProfileIds = (await _db.Follows
+                    .Where(f => f.FollowerId == requesterProfileId.Value &&
+                                targetProfileIds.Contains(f.FollowingId) &&
+                                f.Status == FollowStatus.Accepted)
+                    .Select(f => f.FollowingId)
+                    .ToListAsync()).ToHashSet();
+            }
+        }
+
+        return rows.ToDictionary(
+            r => r.AuthUserId.ToString(),
+            r => new AuthorInfo(
+                _avatarStorage.ResolvePublicUrl(r.AvatarPath),
+                r.Occupation,
+                followedProfileIds.Contains(r.Id)));
+    }
+
     public async Task EnsureProfileExistsAsync(Guid authUserId, string username, string email, string role)
     {
         var exists = await _db.UserProfiles.AnyAsync(p => p.AuthUserId == authUserId);
@@ -331,6 +383,9 @@ public class ProfileBusinessService : IProfileService
             profile.Education,
             profile.Occupation,
             JsonSerializer.Deserialize<List<string>>(profile.InterestsJson) ?? new(),
+            JsonSerializer.Deserialize<List<string>>(profile.EducationsJson) ?? new(),
+            JsonSerializer.Deserialize<List<string>>(profile.OccupationsJson) ?? new(),
+            JsonSerializer.Deserialize<List<ProfileLink>>(profile.LinksJson) ?? new(),
             profile.Followers.Count(f => f.Status == FollowStatus.Accepted),
             profile.Following.Count(f => f.Status == FollowStatus.Accepted),
             isFollowed,

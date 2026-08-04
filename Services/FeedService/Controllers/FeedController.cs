@@ -82,6 +82,17 @@ public class FeedController : ControllerBase
         return Ok(result);
     }
 
+    // Who reposted this post (direct reposts and reposts-with-thought).
+    [HttpGet("posts/{postId:guid}/reposts")]
+    public async Task<IActionResult> GetReposts(
+        Guid postId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var result = await _feedService.GetRepostsAsync(postId, CurrentUserId, page, pageSize);
+        return Ok(result);
+    }
+
     [HttpGet("categories")]
     [AllowAnonymous]
     public async Task<IActionResult> GetCategories()

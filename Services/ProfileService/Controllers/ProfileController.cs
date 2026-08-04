@@ -153,6 +153,20 @@ public class InternalProfileController : ControllerBase
         return Ok(map);
     }
 
+    // Batch author info (avatar + occupation + is_followed) for the feed.
+    [HttpPost("profiles/author-info")]
+    public async Task<IActionResult> GetAuthorInfo([FromBody] AuthorInfoLookupRequest request)
+    {
+        var ids = new List<Guid>();
+        foreach (var s in request.AuthUserIds ?? new())
+            if (Guid.TryParse(s, out var g)) ids.Add(g);
+
+        Guid? requester = Guid.TryParse(request.RequesterId, out var r) ? r : null;
+        var map = await _profileService.GetAuthorInfoAsync(ids, requester);
+        return Ok(map);
+    }
+
     public record EnsureProfileRequest(Guid AuthUserId, string Username, string Email, string Role);
     public record AvatarLookupRequest(List<string>? AuthUserIds);
+    public record AuthorInfoLookupRequest(List<string>? AuthUserIds, string? RequesterId);
 }
