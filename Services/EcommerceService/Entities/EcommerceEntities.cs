@@ -10,6 +10,17 @@ public class ProductCategory : BaseEntity
     public List<Product> Products { get; set; } = new();
 }
 
+// A promotional banner shown at the top of the shop. Admin uploads the image
+// and links it to a product; tapping the banner in the app opens that product.
+public class Banner : BaseEntity
+{
+    public string Title { get; set; } = string.Empty;
+    public string Image { get; set; } = string.Empty;
+    public Guid? ProductId { get; set; }
+    public bool IsActive { get; set; } = true;
+    public int SortOrder { get; set; } = 0;
+}
+
 public class Product : BaseEntity
 {
     public string Name { get; set; } = string.Empty;

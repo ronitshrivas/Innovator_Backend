@@ -127,3 +127,37 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> GetNotifications([FromQuery] string? userId) =>
         Respond(await _admin.GetNotificationsAsync(userId));
 }
+
+// Admin management of shop banners (image + linked product).
+[ApiController]
+[Route("api/admin/banners")]
+[Authorize(Roles = "admin")]
+public class AdminBannerController : ControllerBase
+{
+    private readonly IBannerService _banners;
+
+    public AdminBannerController(IBannerService banners) => _banners = banners;
+
+    private IActionResult Respond<T>(Innovator.Shared.DTOs.ApiResponse<T> result) =>
+        result.Success ? Ok(result) : BadRequest(result);
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll() => Respond(await _banners.GetAllAsync());
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] AdminCreateBannerRequest request) =>
+        Respond(await _banners.CreateAsync(request));
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] AdminUpdateBannerRequest request) =>
+        Respond(await _banners.UpdateAsync(id, request));
+
+    [HttpPost("{id:guid}/image")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> SetImage(Guid id, IFormFile image) =>
+        Respond(await _banners.SetImageAsync(id, image));
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id) =>
+        Respond(await _banners.DeleteAsync(id));
+}

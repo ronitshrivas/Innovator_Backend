@@ -8,6 +8,7 @@ public class ElearningDbContext : DbContext
     public ElearningDbContext(DbContextOptions<ElearningDbContext> options) : base(options) { }
 
     public DbSet<Vendor> Vendors => Set<Vendor>();
+    public DbSet<Banner> Banners => Set<Banner>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<CourseContent> CourseContents => Set<CourseContent>();

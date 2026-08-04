@@ -16,6 +16,7 @@ public class EcommerceDbContext : DbContext
     public DbSet<PaymentQr> PaymentQrs => Set<PaymentQr>();
     public DbSet<FcmToken> FcmTokens => Set<FcmToken>();
     public DbSet<EcommerceNotification> Notifications => Set<EcommerceNotification>();
+    public DbSet<Banner> Banners => Set<Banner>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

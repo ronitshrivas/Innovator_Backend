@@ -19,6 +19,7 @@ builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IBannerService, BannerService>();
 builder.Services.AddFirebasePush(builder.Configuration);
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]
@@ -85,6 +86,21 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<EcommerceDbContext>();
     await db.Database.MigrateAsync();
+
+    // Banners table is created outside EF migrations so the feature ships
+    // without new migration files. Idempotent.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""Banners"" (
+            ""Id"" uuid PRIMARY KEY,
+            ""Title"" text NOT NULL DEFAULT '',
+            ""Image"" text NOT NULL DEFAULT '',
+            ""ProductId"" uuid NULL,
+            ""IsActive"" boolean NOT NULL DEFAULT true,
+            ""SortOrder"" integer NOT NULL DEFAULT 0,
+            ""CreatedAt"" timestamptz NOT NULL DEFAULT now(),
+            ""UpdatedAt"" timestamptz NOT NULL DEFAULT now()
+        );
+    ");
 });
 
 app.UseSwagger();

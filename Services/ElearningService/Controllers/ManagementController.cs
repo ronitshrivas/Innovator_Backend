@@ -198,3 +198,37 @@ public class VendorAuthController : ControllerBase
         return result.Success ? Ok(result) : Unauthorized(result);
     }
 }
+
+// Admin management of e-learning banners (image + linked course).
+[ApiController]
+[Route("api/admin/elearning/banners")]
+[Authorize(Roles = "admin")]
+public class AdminBannerController : ControllerBase
+{
+    private readonly IBannerService _banners;
+
+    public AdminBannerController(IBannerService banners) => _banners = banners;
+
+    private IActionResult Respond<T>(ApiResponse<T> result) =>
+        result.Success ? Ok(result) : BadRequest(result);
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll() => Respond(await _banners.GetAllAsync());
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateBannerRequest request) =>
+        Respond(await _banners.CreateAsync(request));
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBannerRequest request) =>
+        Respond(await _banners.UpdateAsync(id, request));
+
+    [HttpPost("{id:guid}/image")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> SetImage(Guid id, IFormFile image) =>
+        Respond(await _banners.SetImageAsync(id, image));
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id) =>
+        Respond(await _banners.DeleteAsync(id));
+}

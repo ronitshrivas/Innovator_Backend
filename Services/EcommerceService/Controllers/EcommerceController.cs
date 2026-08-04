@@ -42,6 +42,23 @@ public class ProductController : ControllerBase
     }
 }
 
+// Public banners for the shop home carousel.
+[ApiController]
+[Route("api")]
+public class BannerController : ControllerBase
+{
+    private readonly IBannerService _banners;
+
+    public BannerController(IBannerService banners) => _banners = banners;
+
+    [HttpGet("banners")]
+    public async Task<IActionResult> GetBanners()
+    {
+        var result = await _banners.GetActiveAsync();
+        return Ok(result.Data);
+    }
+}
+
 [ApiController]
 [Route("api/cart-items")]
 [Authorize]

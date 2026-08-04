@@ -19,6 +19,7 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IElearningAdminService, ElearningAdminService>();
 builder.Services.AddScoped<IVendorService, VendorService>();
+builder.Services.AddScoped<IBannerService, BannerService>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret is required.");
@@ -101,6 +102,17 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
             ""UpdatedAt"" timestamptz NOT NULL DEFAULT now()
         );
         CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Vendors_Username"" ON ""Vendors"" (""Username"");
+
+        CREATE TABLE IF NOT EXISTS ""Banners"" (
+            ""Id"" uuid PRIMARY KEY,
+            ""Title"" text NOT NULL DEFAULT '',
+            ""Image"" text NOT NULL DEFAULT '',
+            ""CourseId"" uuid NULL,
+            ""IsActive"" boolean NOT NULL DEFAULT true,
+            ""SortOrder"" integer NOT NULL DEFAULT 0,
+            ""CreatedAt"" timestamptz NOT NULL DEFAULT now(),
+            ""UpdatedAt"" timestamptz NOT NULL DEFAULT now()
+        );
     ");
 
     await ElearningSeeder.SeedAsync(db);

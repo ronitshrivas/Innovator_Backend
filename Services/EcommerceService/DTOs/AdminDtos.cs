@@ -151,6 +151,33 @@ public record AdminNotificationDto(
     string CreatedAt
 );
 
+// ---------- Banners ----------
+
+public record BannerDto(
+    string Id,
+    string Title,
+    string? Image,
+    string? ProductId,
+    string? ProductName,
+    bool IsActive,
+    int SortOrder,
+    string CreatedAt
+);
+
+public record AdminCreateBannerRequest(
+    string? Title,
+    string? ProductId,
+    bool IsActive = true,
+    int SortOrder = 0
+);
+
+public record AdminUpdateBannerRequest(
+    string? Title,
+    string? ProductId,
+    bool? IsActive,
+    int? SortOrder
+);
+
 // ---------- Dashboard ----------
 
 public record AdminDashboardDto(

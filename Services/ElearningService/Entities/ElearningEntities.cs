@@ -14,6 +14,17 @@ public class Vendor : BaseEntity
     public bool IsActive { get; set; } = true;
 }
 
+// A promotional banner shown at the top of the e-learning home. Admin uploads
+// the image and links it to a course; tapping it in the app opens that course.
+public class Banner : BaseEntity
+{
+    public string Title { get; set; } = string.Empty;
+    public string Image { get; set; } = string.Empty;
+    public Guid? CourseId { get; set; }
+    public bool IsActive { get; set; } = true;
+    public int SortOrder { get; set; } = 0;
+}
+
 public class Category : BaseEntity
 {
     public string Name { get; set; } = string.Empty;

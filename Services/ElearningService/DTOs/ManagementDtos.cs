@@ -2,6 +2,33 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ElearningService.DTOs;
 
+// ---------- Banners ----------
+
+public record BannerDto(
+    string Id,
+    string Title,
+    string? Image,
+    string? CourseId,
+    string? CourseTitle,
+    bool IsActive,
+    int SortOrder,
+    string CreatedAt
+);
+
+public record CreateBannerRequest(
+    string? Title,
+    string? CourseId,
+    bool IsActive = true,
+    int SortOrder = 0
+);
+
+public record UpdateBannerRequest(
+    string? Title,
+    string? CourseId,
+    bool? IsActive,
+    int? SortOrder
+);
+
 /// <summary>
 /// Describes who is acting. Admins see and manage every vendor's courses;
 /// vendors are restricted to the courses they own.
