@@ -1,3 +1,5 @@
+using System.Net.Http.Json;
+using System.Text.Json;
 using EcommerceService.Data;
 using EcommerceService.DTOs;
 using EcommerceService.Entities;
@@ -19,12 +21,18 @@ public class OrderService : IOrderService
     private readonly EcommerceDbContext _db;
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _config;
+    private readonly IHttpClientFactory _httpFactory;
 
-    public OrderService(EcommerceDbContext db, IWebHostEnvironment env, IConfiguration config)
+    public OrderService(
+        EcommerceDbContext db,
+        IWebHostEnvironment env,
+        IConfiguration config,
+        IHttpClientFactory httpFactory)
     {
         _db = db;
         _env = env;
         _config = config;
+        _httpFactory = httpFactory;
     }
 
     public async Task<ApiResponse<CheckoutSummaryResponse>> CheckoutAsync(
@@ -137,19 +145,65 @@ public class OrderService : IOrderService
         if (order == null)
             return ApiResponse<KhaltiPaymentResponse>.Fail("Order not found.");
 
-        var pidx = Guid.NewGuid().ToString("N");
-        var khaltiBaseUrl = _config["Khalti:BaseUrl"] ?? "https://khalti.com/pay";
-        var paymentUrl = $"{khaltiBaseUrl}?pidx={pidx}";
+        var apiUrl = (_config["Khalti:ApiUrl"] ?? "https://khalti.com/api/v2").TrimEnd('/');
+        var secret = _config["Khalti:SecretKey"] ?? string.Empty;
+        var returnUrl = _config["Khalti:ReturnUrl"] ?? "http://36.253.137.34:8004/api/payments/khalti/callback";
+        var websiteUrl = _config["Khalti:WebsiteUrl"] ?? "http://36.253.137.34:8004";
 
-        order.KhaltiPidx = pidx;
-        order.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        // Khalti expects the amount in paisa (NPR * 100).
+        var amountPaisa = (int)Math.Round(order.GrandTotal * 100m);
 
-        return ApiResponse<KhaltiPaymentResponse>.Ok(new KhaltiPaymentResponse(
-            Pidx: pidx,
-            PaymentUrl: paymentUrl,
-            OrderId: orderId,
-            Amount: (double)order.GrandTotal));
+        var payload = new
+        {
+            return_url = returnUrl,
+            website_url = websiteUrl,
+            amount = amountPaisa,
+            purchase_order_id = order.Id.ToString(),
+            purchase_order_name = $"Order {order.Id}",
+            customer_info = new
+            {
+                name = order.FullName,
+                phone = order.PhoneNumber,
+            },
+        };
+
+        try
+        {
+            var client = _httpFactory.CreateClient();
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"{apiUrl}/epayment/initiate/")
+            {
+                Content = JsonContent.Create(payload),
+            };
+            req.Headers.TryAddWithoutValidation("Authorization", $"Key {secret}");
+
+            var response = await client.SendAsync(req);
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+                return ApiResponse<KhaltiPaymentResponse>.Fail($"Khalti error: {body}");
+
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var pidx = root.TryGetProperty("pidx", out var p) ? p.GetString() ?? "" : "";
+            var paymentUrl = root.TryGetProperty("payment_url", out var u) ? u.GetString() ?? "" : "";
+
+            if (string.IsNullOrEmpty(pidx) || string.IsNullOrEmpty(paymentUrl))
+                return ApiResponse<KhaltiPaymentResponse>.Fail("Khalti did not return a payment URL.");
+
+            order.KhaltiPidx = pidx;
+            order.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return ApiResponse<KhaltiPaymentResponse>.Ok(new KhaltiPaymentResponse(
+                Pidx: pidx,
+                PaymentUrl: paymentUrl,
+                OrderId: orderId,
+                Amount: (double)order.GrandTotal));
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<KhaltiPaymentResponse>.Fail($"Payment initiation failed: {ex.Message}");
+        }
     }
 
     public async Task<ApiResponse<List<PaymentQrDto>>> GetPaymentQrsAsync()

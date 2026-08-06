@@ -15,6 +15,7 @@ builder.Services.AddDbContext<ElearningDbContext>(options =>
 
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IElearningAdminService, ElearningAdminService>();

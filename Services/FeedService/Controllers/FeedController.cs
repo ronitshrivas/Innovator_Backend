@@ -38,9 +38,11 @@ public class FeedController : ControllerBase
         [FromForm] string? sharedPostId,
         [FromForm] List<IFormFile>? media)
     {
-        // A post needs either text or media.
-        if (string.IsNullOrWhiteSpace(content) && (media == null || media.Count == 0))
-            return BadRequest(new { message = "A post needs text or media." });
+        // A post needs text, media, or be a repost (sharedPostId).
+        if (string.IsNullOrWhiteSpace(content)
+            && (media == null || media.Count == 0)
+            && string.IsNullOrWhiteSpace(sharedPostId))
+            return BadRequest(new { message = "A post needs text, media, or a shared post." });
 
         var request = new CreatePostRequest(content ?? string.Empty, categoryIds, sharedPostId);
         var result = await _feedService.CreatePostAsync(
