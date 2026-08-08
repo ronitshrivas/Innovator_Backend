@@ -210,7 +210,7 @@ public class AuthBusinessService : IAuthService
             .FirstOrDefaultAsync(r => r.Token == refreshToken && !r.IsRevoked);
 
         if (stored == null || stored.ExpiresAt < DateTime.UtcNow)
-            return ApiResponse<AuthResponse>.Fail("Invalid or expired refresh token.");
+            return ApiResponse<AuthResponse>.Fail("REFRESH_TOKEN_EXPIRED: Please sign in again.");
 
         stored.IsRevoked = true;
 
