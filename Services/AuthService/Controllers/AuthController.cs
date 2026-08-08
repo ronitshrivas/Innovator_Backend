@@ -59,6 +59,13 @@ public class AuthController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyOtpRequest request)
+    {
+        var result = await _authService.VerifyOtpAsync(request with { Purpose = "email_verification" });
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     [HttpPost("forgot-password/verify")]
     public async Task<IActionResult> VerifyForgotOtp([FromBody] VerifyOtpRequest request)
     {

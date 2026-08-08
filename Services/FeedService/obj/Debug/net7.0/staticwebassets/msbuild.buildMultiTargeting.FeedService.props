@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="../build/FeedService.props" />
-</Project>

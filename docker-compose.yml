@@ -50,6 +50,9 @@ services:
       <<: *common-env
       ASPNETCORE_URLS: http://+:8010
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_auth;Username=innovator;Password=innovator123"
+      Email__From: ${BREVO_FROM}
+      Email__Username: ${BREVO_LOGIN}
+      Email__Password: ${BREVO_SMTP_KEY}
     ports:
       - "8010:8010"
 
