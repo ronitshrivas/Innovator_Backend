@@ -160,7 +160,7 @@ public class InternalProfileController : ControllerBase
     {
         // Accept ids/requester under either snake_case or camelCase so a caller's
         // JSON naming policy can never silently break this lookup.
-        var rawIds = request.AuthUserIds ?? request.AuthUserIdsCamel ?? new();
+        var rawIds = request.AuthUserIds ?? request.AuthUserIdsCamel ?? new List<string>();
         var rawRequester = request.RequesterId ?? request.RequesterIdCamel;
 
         var ids = new List<Guid>();
