@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProfileService.DTOs;
 using ProfileService.Services;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 
 namespace ProfileService.Controllers;
 
@@ -157,16 +158,26 @@ public class InternalProfileController : ControllerBase
     [HttpPost("profiles/author-info")]
     public async Task<IActionResult> GetAuthorInfo([FromBody] AuthorInfoLookupRequest request)
     {
+        // Accept ids/requester under either snake_case or camelCase so a caller's
+        // JSON naming policy can never silently break this lookup.
+        var rawIds = request.AuthUserIds ?? request.AuthUserIdsCamel ?? new();
+        var rawRequester = request.RequesterId ?? request.RequesterIdCamel;
+
         var ids = new List<Guid>();
-        foreach (var s in request.AuthUserIds ?? new())
+        foreach (var s in rawIds)
             if (Guid.TryParse(s, out var g)) ids.Add(g);
 
-        Guid? requester = Guid.TryParse(request.RequesterId, out var r) ? r : null;
+        Guid? requester = Guid.TryParse(rawRequester, out var r) ? r : null;
         var map = await _profileService.GetAuthorInfoAsync(ids, requester);
         return Ok(map);
     }
 
     public record EnsureProfileRequest(Guid AuthUserId, string Username, string Email, string Role);
     public record AvatarLookupRequest(List<string>? AuthUserIds);
-    public record AuthorInfoLookupRequest(List<string>? AuthUserIds, string? RequesterId);
+
+    public record AuthorInfoLookupRequest(
+        [property: JsonPropertyName("auth_user_ids")] List<string>? AuthUserIds,
+        [property: JsonPropertyName("requester_id")] string? RequesterId,
+        [property: JsonPropertyName("authUserIds")] List<string>? AuthUserIdsCamel = null,
+        [property: JsonPropertyName("requesterId")] string? RequesterIdCamel = null);
 }
