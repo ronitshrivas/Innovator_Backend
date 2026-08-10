@@ -81,6 +81,9 @@ public record SharedPostDetailsDto(
 
 public record ReactionResponse(
     string Id,
+    string UserId,
+    string Username,
+    string? Avatar,
     string Post,
     string Type,
     DateTime CreatedAt
@@ -88,6 +91,7 @@ public record ReactionResponse(
 
 public record CommentResponse(
     string Id,
+    string UserId,
     string Username,
     string? Avatar,
     string Post,

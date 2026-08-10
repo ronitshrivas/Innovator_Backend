@@ -169,6 +169,7 @@ public class CommentBusinessService : ICommentService
     private static CommentResponse MapToResponse(Comment c) =>
         new(
             c.Id.ToString(),
+            c.AuthorId.ToString(),
             c.Username,
             c.Avatar,
             c.PostId?.ToString() ?? "",

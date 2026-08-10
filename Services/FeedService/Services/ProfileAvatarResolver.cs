@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace FeedService.Services;
 
 /// Per-author info the feed pulls from the profile service.
-public record AuthorInfo(string? Avatar, string? Occupation, bool IsFollowed);
+public record AuthorInfo(string? Avatar, string? Occupation, bool IsFollowed, string? Username = null);
 
 /// Request body for the profile service's internal author-info lookup.
 /// Property names are pinned to snake_case so the wire format never depends
@@ -19,7 +19,8 @@ public record AuthorInfoRequest(
 public record AuthorInfoDto(
     [property: JsonPropertyName("avatar")] string? Avatar,
     [property: JsonPropertyName("occupation")] string? Occupation,
-    [property: JsonPropertyName("is_followed")] bool IsFollowed);
+    [property: JsonPropertyName("is_followed")] bool IsFollowed,
+    [property: JsonPropertyName("username")] string? Username);
 
 public interface IProfileAvatarResolver
 {
@@ -115,7 +116,8 @@ public class ProfileAvatarResolver : IProfileAvatarResolver
 
             return raw.ToDictionary(
                 kv => kv.Key,
-                kv => new AuthorInfo(kv.Value.Avatar, kv.Value.Occupation, kv.Value.IsFollowed));
+                kv => new AuthorInfo(
+                    kv.Value.Avatar, kv.Value.Occupation, kv.Value.IsFollowed, kv.Value.Username));
         }
         catch (Exception ex)
         {

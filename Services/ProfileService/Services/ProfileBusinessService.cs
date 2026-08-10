@@ -26,7 +26,7 @@ public interface IProfileService
 
 /// Compact per-author info the feed embeds: current avatar, occupation and
 /// whether the requesting user follows them.
-public record AuthorInfo(string? Avatar, string? Occupation, bool IsFollowed);
+public record AuthorInfo(string? Avatar, string? Occupation, bool IsFollowed, string? Username = null);
 
 public class ProfileBusinessService : IProfileService
 {
@@ -317,7 +317,7 @@ public class ProfileBusinessService : IProfileService
 
         var rows = await _db.UserProfiles
             .Where(p => ids.Contains(p.AuthUserId))
-            .Select(p => new { p.Id, p.AuthUserId, p.AvatarPath, p.Occupation })
+            .Select(p => new { p.Id, p.AuthUserId, p.AvatarPath, p.Occupation, p.Username })
             .ToListAsync();
 
         // Which of these profiles does the requester follow?
@@ -346,7 +346,8 @@ public class ProfileBusinessService : IProfileService
             r => new AuthorInfo(
                 _avatarStorage.ResolvePublicUrl(r.AvatarPath),
                 r.Occupation,
-                followedProfileIds.Contains(r.Id)));
+                followedProfileIds.Contains(r.Id),
+                r.Username));
     }
 
     public async Task EnsureProfileExistsAsync(Guid authUserId, string username, string email, string role)

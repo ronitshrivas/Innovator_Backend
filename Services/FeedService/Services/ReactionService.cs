@@ -16,11 +16,16 @@ public class ReactionService : IReactionService
 {
     private readonly FeedDbContext _db;
     private readonly INotificationService _notifications;
+    private readonly IProfileAvatarResolver _authors;
 
-    public ReactionService(FeedDbContext db, INotificationService notifications)
+    public ReactionService(
+        FeedDbContext db,
+        INotificationService notifications,
+        IProfileAvatarResolver authors)
     {
         _db = db;
         _notifications = notifications;
+        _authors = authors;
     }
 
     public async Task<ApiResponse<ReactionResponse>> ToggleReactionAsync(
@@ -48,6 +53,9 @@ public class ReactionService : IReactionService
             return ApiResponse<ReactionResponse>.Ok(
                 new ReactionResponse(
                     existing.Id.ToString(),
+                    userId.ToString(),
+                    string.Empty,
+                    null,
                     postId.ToString(),
                     existing.Type,
                     existing.CreatedAt));
@@ -82,6 +90,9 @@ public class ReactionService : IReactionService
         return ApiResponse<ReactionResponse>.Ok(
             new ReactionResponse(
                 reaction.Id.ToString(),
+                userId.ToString(),
+                actorName,
+                actor?.Avatar,
                 postId.ToString(),
                 reaction.Type,
                 reaction.CreatedAt));
@@ -94,11 +105,22 @@ public class ReactionService : IReactionService
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
 
+        // Resolve each reactor's current username + avatar from the profile service.
+        var authorIds = reactions.Select(r => r.AuthorId);
+        var authors = await _authors.ResolveAuthorsAsync(authorIds, null);
+
         return ApiResponse<List<ReactionResponse>>.Ok(
-            reactions.Select(r => new ReactionResponse(
-                r.Id.ToString(),
-                r.PostId.ToString(),
-                r.Type,
-                r.CreatedAt)).ToList());
+            reactions.Select(r =>
+            {
+                authors.TryGetValue(r.AuthorId.ToString(), out var info);
+                return new ReactionResponse(
+                    r.Id.ToString(),
+                    r.AuthorId.ToString(),
+                    info?.Username ?? string.Empty,
+                    info?.Avatar,
+                    r.PostId.ToString(),
+                    r.Type,
+                    r.CreatedAt);
+            }).ToList());
     }
 }
