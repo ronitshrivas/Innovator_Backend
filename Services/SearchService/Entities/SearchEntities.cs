@@ -14,6 +14,7 @@ public class UserIndex : BaseEntity
     public int FollowersCount { get; set; } = 0;
     public int FollowingCount { get; set; } = 0;
     public bool IsActive { get; set; } = true;
+    public bool ShowInSearch { get; set; } = true;
 }
 
 public class PostIndex : BaseEntity

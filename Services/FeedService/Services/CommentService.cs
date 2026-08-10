@@ -25,11 +25,19 @@ public class CommentBusinessService : ICommentService
 {
     private readonly FeedDbContext _db;
     private readonly INotificationService _notifications;
+    private readonly ISettingsClient _settings;
+    private readonly IProfileAvatarResolver _authors;
 
-    public CommentBusinessService(FeedDbContext db, INotificationService notifications)
+    public CommentBusinessService(
+        FeedDbContext db,
+        INotificationService notifications,
+        ISettingsClient settings,
+        IProfileAvatarResolver authors)
     {
         _db = db;
         _notifications = notifications;
+        _settings = settings;
+        _authors = authors;
     }
 
     public async Task<ApiResponse<List<CommentResponse>>> GetCommentsAsync(Guid postId, int page)
@@ -62,6 +70,29 @@ public class CommentBusinessService : ICommentService
         Guid postId, Guid authorId, string username,
         string? avatar, string content)
     {
+        // Enforce the post author's who_can_comment preference.
+        var target = await _db.Posts.FindAsync(postId);
+        if (target != null && target.AuthorId != authorId)
+        {
+            var flags = await _settings.GetFlagsAsync(new[] { target.AuthorId });
+            if (flags.TryGetValue(target.AuthorId.ToString(), out var f))
+            {
+                var rule = f.WhoCanComment;
+                if (rule == "none")
+                    return ApiResponse<CommentResponse>.Fail("This user doesn't allow comments.");
+
+                if (rule == "followers")
+                {
+                    var rel = await _authors.ResolveAuthorsAsync(new[] { target.AuthorId }, authorId);
+                    var isFollower = rel.TryGetValue(target.AuthorId.ToString(), out var info)
+                                     && info.IsFollowed;
+                    if (!isFollower)
+                        return ApiResponse<CommentResponse>.Fail(
+                            "Only followers can comment on this post.");
+                }
+            }
+        }
+
         var comment = new Comment
         {
             PostId = postId,

@@ -57,7 +57,8 @@ public record UserSummaryDto(
 
 public record FollowActionResponse(
     bool IsFollowing,
-    string Message
+    string Message,
+    string Status = "none" // none | pending | accepted
 );
 
 public record BlockActionResponse(

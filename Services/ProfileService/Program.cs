@@ -15,6 +15,7 @@ builder.Services.AddDbContext<ProfileDbContext>(options =>
 
 builder.Services.AddScoped<IProfileService, ProfileBusinessService>();
 builder.Services.AddScoped<IAvatarStorageService, AvatarStorageService>();
+builder.Services.AddScoped<ISettingsService, SettingsService>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret is required.");
@@ -86,6 +87,33 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
         ALTER TABLE ""UserProfiles"" ADD COLUMN IF NOT EXISTS ""EducationsJson"" text NOT NULL DEFAULT '[]';
         ALTER TABLE ""UserProfiles"" ADD COLUMN IF NOT EXISTS ""OccupationsJson"" text NOT NULL DEFAULT '[]';
         ALTER TABLE ""UserProfiles"" ADD COLUMN IF NOT EXISTS ""LinksJson"" text NOT NULL DEFAULT '[]';
+    ");
+
+    // Per-user settings table, created outside EF migrations. Idempotent.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""UserSettings"" (
+            ""Id"" uuid PRIMARY KEY,
+            ""UserId"" uuid NOT NULL,
+            ""PushEnabled"" boolean NOT NULL DEFAULT TRUE,
+            ""NotifyLikes"" boolean NOT NULL DEFAULT TRUE,
+            ""NotifyComments"" boolean NOT NULL DEFAULT TRUE,
+            ""NotifyFollows"" boolean NOT NULL DEFAULT TRUE,
+            ""NotifyMentions"" boolean NOT NULL DEFAULT TRUE,
+            ""NotifyMessages"" boolean NOT NULL DEFAULT TRUE,
+            ""NotifyReposts"" boolean NOT NULL DEFAULT TRUE,
+            ""EmailDigest"" boolean NOT NULL DEFAULT FALSE,
+            ""PrivateAccount"" boolean NOT NULL DEFAULT FALSE,
+            ""WhoCanMessage"" text NOT NULL DEFAULT 'everyone',
+            ""WhoCanComment"" text NOT NULL DEFAULT 'everyone',
+            ""ShowActivityStatus"" boolean NOT NULL DEFAULT TRUE,
+            ""ShowInSearch"" boolean NOT NULL DEFAULT TRUE,
+            ""Language"" text NOT NULL DEFAULT 'en',
+            ""Theme"" text NOT NULL DEFAULT 'system',
+            ""Timezone"" text NULL,
+            ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),
+            ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc')
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_UserSettings_UserId"" ON ""UserSettings"" (""UserId"");
     ");
 });
 

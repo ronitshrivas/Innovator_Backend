@@ -22,11 +22,14 @@ public class SearchBusinessService : ISearchService
 {
     private readonly SearchDbContext _db;
     private readonly IConfiguration _config;
+    private readonly IBlockGateway _blocks;
 
-    public SearchBusinessService(SearchDbContext db, IConfiguration config)
+    public SearchBusinessService(
+        SearchDbContext db, IConfiguration config, IBlockGateway blocks)
     {
         _db = db;
         _config = config;
+        _blocks = blocks;
     }
 
     public async Task<ApiResponse<SearchResultDto>> SearchAsync(
@@ -67,10 +70,13 @@ public class SearchBusinessService : ISearchService
         string query, Guid requesterId)
     {
         var q = query.ToLower().Trim();
+        var blocked = await _blocks.GetBlockedIdsAsync(requesterId);
 
         var users = await _db.UserIndex
             .Where(u => u.IsActive &&
+                        u.ShowInSearch &&
                         u.AuthUserId != requesterId &&
+                        !blocked.Contains(u.AuthUserId) &&
                         (u.Username.ToLower().Contains(q) ||
                          u.FullName.ToLower().Contains(q)))
             .OrderByDescending(u => u.FollowersCount)

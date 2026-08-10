@@ -71,6 +71,7 @@ public record PostResponse(
 
 public record SharedPostDetailsDto(
     string Id,
+    string UserId,
     string Username,
     string FullName,
     string? Avatar,

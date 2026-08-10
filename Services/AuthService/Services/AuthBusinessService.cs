@@ -18,6 +18,9 @@ public interface IAuthService
     Task<ApiResponse<bool>> VerifyOtpAsync(VerifyOtpRequest request);
     Task<ApiResponse<bool>> ResetPasswordAsync(ResetPasswordRequest request);
     Task<ApiResponse<bool>> ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
+    Task<ApiResponse<bool>> ChangeEmailAsync(Guid userId, ChangeEmailRequest request);
+    Task<ApiResponse<bool>> VerifyEmailChangeAsync(Guid userId, VerifyEmailChangeRequest request);
+    Task<ApiResponse<bool>> DeleteAccountAsync(Guid userId, DeleteAccountRequest request);
     Task<ApiResponse<CheckUsernameResponse>> CheckUsernameAsync(string username);
     Task<ApiResponse<bool>> ResendOtpAsync(ResendOtpRequest request);
     Task RevokeRefreshTokenAsync(string token);
@@ -104,6 +107,9 @@ public class AuthBusinessService : IAuthService
 
         if (user == null || !PasswordHasher.Verify(request.Password, user.PasswordHash))
             return ApiResponse<AuthResponse>.Fail("Invalid credentials.");
+
+        if (user.IsDeleted)
+            return ApiResponse<AuthResponse>.Fail("This account no longer exists.");
 
         if (!user.IsActive)
             return ApiResponse<AuthResponse>.Fail("Account is suspended.");
@@ -310,6 +316,108 @@ public class AuthBusinessService : IAuthService
         await _db.SaveChangesAsync();
 
         return ApiResponse<bool>.Ok(true, "Password changed.");
+    }
+
+    public async Task<ApiResponse<bool>> ChangeEmailAsync(Guid userId, ChangeEmailRequest request)
+    {
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return ApiResponse<bool>.Fail("User not found.");
+
+        if (!PasswordHasher.Verify(request.Password, user.PasswordHash))
+            return ApiResponse<bool>.Fail("Password is incorrect.");
+
+        var newEmail = request.NewEmail.ToLower().Trim();
+        if (newEmail == user.Email)
+            return ApiResponse<bool>.Fail("That is already your email.");
+
+        var taken = await _db.Users.AnyAsync(u => u.Email == newEmail && u.Id != userId);
+        if (taken) return ApiResponse<bool>.Fail("That email is already in use.");
+
+        // Store as pending; the address only becomes active once the OTP sent to
+        // the new address is confirmed.
+        user.PendingEmail = newEmail;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        var otp = GenerateOtp();
+        _db.OtpRecords.Add(new OtpRecord
+        {
+            Code = otp,
+            Purpose = OtpPurpose.EmailChange,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(10),
+            UserId = user.Id
+        });
+
+        await _db.SaveChangesAsync();
+
+        try
+        {
+            await _emailService.SendOtpAsync(newEmail, otp, "email_verification");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Change-email OTP send failed for {Email}", newEmail);
+        }
+
+        return ApiResponse<bool>.Ok(true, "Verification code sent to your new email.");
+    }
+
+    public async Task<ApiResponse<bool>> VerifyEmailChangeAsync(
+        Guid userId, VerifyEmailChangeRequest request)
+    {
+        var user = await _db.Users
+            .Include(u => u.OtpRecords)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null) return ApiResponse<bool>.Fail("User not found.");
+        if (string.IsNullOrEmpty(user.PendingEmail))
+            return ApiResponse<bool>.Fail("No email change is pending.");
+
+        var record = user.OtpRecords
+            .Where(o => o.Purpose == OtpPurpose.EmailChange && !o.IsUsed &&
+                        o.ExpiresAt > DateTime.UtcNow)
+            .OrderByDescending(o => o.CreatedAt)
+            .FirstOrDefault();
+
+        if (record == null || record.Code != request.Code)
+            return ApiResponse<bool>.Fail("Invalid or expired code.");
+
+        // Re-check uniqueness in case the address was claimed while pending.
+        var taken = await _db.Users.AnyAsync(u => u.Email == user.PendingEmail && u.Id != userId);
+        if (taken) return ApiResponse<bool>.Fail("That email is already in use.");
+
+        record.IsUsed = true;
+        user.Email = user.PendingEmail!;
+        user.PendingEmail = null;
+        user.IsEmailVerified = true;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return ApiResponse<bool>.Ok(true, "Email updated.");
+    }
+
+    public async Task<ApiResponse<bool>> DeleteAccountAsync(
+        Guid userId, DeleteAccountRequest request)
+    {
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return ApiResponse<bool>.Fail("User not found.");
+
+        if (!PasswordHasher.Verify(request.Password, user.PasswordHash))
+            return ApiResponse<bool>.Fail("Password is incorrect.");
+
+        // Soft-delete: mark deleted, anonymize PII, disable login, revoke tokens.
+        user.IsDeleted = true;
+        user.IsActive = false;
+        user.Email = $"deleted+{user.Id}@innovator.deleted";
+        user.PendingEmail = null;
+        user.Phone = null;
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
+        user.UpdatedAt = DateTime.UtcNow;
+
+        var tokens = await _db.RefreshTokens.Where(r => r.UserId == user.Id).ToListAsync();
+        tokens.ForEach(t => t.IsRevoked = true);
+
+        await _db.SaveChangesAsync();
+        return ApiResponse<bool>.Ok(true, "Account deleted.");
     }
 
     public async Task<ApiResponse<CheckUsernameResponse>> CheckUsernameAsync(string username)

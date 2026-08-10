@@ -25,8 +25,13 @@ public interface IChatService
 public class ChatBusinessService : IChatService
 {
     private readonly ChatDbContext _db;
+    private readonly IProfileGateway _profile;
 
-    public ChatBusinessService(ChatDbContext db) => _db = db;
+    public ChatBusinessService(ChatDbContext db, IProfileGateway profile)
+    {
+        _db = db;
+        _profile = profile;
+    }
 
     public async Task<ApiResponse<ConversationResponse>> GetOrCreateConversationAsync(
         Guid requesterId, string requesterUsername, string? requesterAvatar,
@@ -43,6 +48,20 @@ public class ChatBusinessService : IChatService
         if (existing != null)
             return ApiResponse<ConversationResponse>.Ok(
                 await MapToResponseAsync(existing, requesterId));
+
+        // Enforce the target's who_can_message preference before starting a new chat.
+        if (request.ParticipantUserId != requesterId)
+        {
+            var rule = await _profile.GetWhoCanMessageAsync(request.ParticipantUserId);
+            if (rule == "none")
+                return ApiResponse<ConversationResponse>.Fail(
+                    "This user doesn't accept new messages.");
+
+            if (rule == "followers" &&
+                !await _profile.IsFollowedByAsync(request.ParticipantUserId, requesterId))
+                return ApiResponse<ConversationResponse>.Fail(
+                    "Only followers can message this user.");
+        }
 
         var conversation = new Conversation { Type = "direct" };
 

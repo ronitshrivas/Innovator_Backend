@@ -12,6 +12,12 @@ public class User : BaseEntity
     public bool IsActive { get; set; } = true;
     public string? Phone { get; set; }
 
+    // Email awaiting OTP confirmation during a change-email flow.
+    public string? PendingEmail { get; set; }
+
+    // Soft-delete marker; a deleted account can no longer authenticate.
+    public bool IsDeleted { get; set; } = false;
+
     public List<RefreshToken> RefreshTokens { get; set; } = new();
     public List<OtpRecord> OtpRecords { get; set; } = new();
 }
@@ -39,5 +45,6 @@ public enum OtpPurpose
 {
     EmailVerification,
     ForgotPassword,
-    PhoneVerification
+    PhoneVerification,
+    EmailChange
 }

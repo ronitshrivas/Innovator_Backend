@@ -67,6 +67,12 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
     await db.Database.MigrateAsync();
+
+    // Account-management columns added outside EF migrations. Idempotent.
+    await db.Database.ExecuteSqlRawAsync(@"
+        ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""PendingEmail"" text NULL;
+        ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""IsDeleted"" boolean NOT NULL DEFAULT FALSE;
+    ");
 });
 
 app.UseSwagger();

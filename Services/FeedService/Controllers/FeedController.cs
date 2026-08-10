@@ -224,7 +224,12 @@ public class CommentController : ControllerBase
         var result = await _commentService.AddCommentAsync(
             postId, CurrentUserId, CurrentUsername, null, request.Content);
 
-        return result.Success ? StatusCode(201, result) : BadRequest(result);
+        if (result.Success) return StatusCode(201, result);
+        // Permission denials from who_can_comment surface as 403.
+        return result.Message.Contains("comment", StringComparison.OrdinalIgnoreCase)
+               && (result.Message.Contains("allow") || result.Message.Contains("followers"))
+            ? StatusCode(403, result)
+            : BadRequest(result);
     }
 
     [HttpPatch("{commentId:guid}")]

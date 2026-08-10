@@ -10,6 +10,7 @@ public class ProfileDbContext : DbContext
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<Follow> Follows => Set<Follow>();
     public DbSet<BlockedUser> BlockedUsers => Set<BlockedUser>();
+    public DbSet<UserSettings> UserSettings => Set<UserSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -40,6 +41,12 @@ public class ProfileDbContext : DbContext
              .WithMany(u => u.Followers)
              .HasForeignKey(x => x.FollowingId)
              .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<UserSettings>(s =>
+        {
+            s.HasKey(x => x.Id);
+            s.HasIndex(x => x.UserId).IsUnique();
         });
 
         builder.Entity<BlockedUser>(b =>

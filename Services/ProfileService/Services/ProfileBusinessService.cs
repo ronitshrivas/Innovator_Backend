@@ -15,11 +15,14 @@ public interface IProfileService
     Task<ApiResponse<ProfileResponse>> UpdateProfileAsync(Guid authUserId, UpdateProfileRequest request);
     Task<ApiResponse<string>> UpdateAvatarAsync(Guid authUserId, IFormFile file);
     Task<ApiResponse<FollowActionResponse>> ToggleFollowAsync(Guid followerId, Guid targetAuthUserId);
+    Task<ApiResponse<List<UserSummaryDto>>> GetFollowRequestsAsync(Guid authUserId);
+    Task<ApiResponse<bool>> RespondToFollowRequestAsync(Guid ownerAuthId, Guid requesterAuthUserId, bool accept);
     Task<ApiResponse<List<UserSummaryDto>>> GetFollowersAsync(Guid authUserId, Guid requesterId);
     Task<ApiResponse<List<UserSummaryDto>>> GetFollowingAsync(Guid authUserId, Guid requesterId);
     Task<ApiResponse<BlockActionResponse>> ToggleBlockAsync(Guid blockerId, Guid targetAuthUserId);
     Task<ApiResponse<List<BlockedUserDto>>> GetBlockedListAsync(Guid authUserId);
     Task EnsureProfileExistsAsync(Guid authUserId, string username, string email, string role);
+    Task<List<string>> GetBlockPairIdsAsync(Guid authUserId);
     Task<Dictionary<string, string?>> GetAvatarsAsync(IEnumerable<Guid> authUserIds);
     Task<Dictionary<string, AuthorInfo>> GetAuthorInfoAsync(IEnumerable<Guid> authUserIds, Guid? requesterId);
 }
@@ -165,20 +168,94 @@ public class ProfileBusinessService : IProfileService
 
         if (existing != null)
         {
+            // Toggling off cancels a pending request or unfollows an accepted one.
             _db.Follows.Remove(existing);
             await _db.SaveChangesAsync();
-            return ApiResponse<FollowActionResponse>.Ok(new FollowActionResponse(false, "Unfollowed."));
+            var msg = existing.Status == FollowStatus.Pending
+                ? "Follow request cancelled."
+                : "Unfollowed.";
+            return ApiResponse<FollowActionResponse>.Ok(new FollowActionResponse(false, msg));
         }
+
+        // Private target → create a pending request instead of an instant follow.
+        var targetPrivate = await _db.UserSettings
+            .Where(s => s.UserId == targetAuthUserId)
+            .Select(s => (bool?)s.PrivateAccount)
+            .FirstOrDefaultAsync() ?? false;
+
+        var status = targetPrivate ? FollowStatus.Pending : FollowStatus.Accepted;
 
         _db.Follows.Add(new Follow
         {
             FollowerId = followerProfile.Id,
             FollowingId = targetProfile.Id,
-            Status = FollowStatus.Accepted
+            Status = status
         });
 
         await _db.SaveChangesAsync();
-        return ApiResponse<FollowActionResponse>.Ok(new FollowActionResponse(true, "Following."));
+
+        return targetPrivate
+            ? ApiResponse<FollowActionResponse>.Ok(
+                new FollowActionResponse(false, "Follow request sent.", "pending"))
+            : ApiResponse<FollowActionResponse>.Ok(
+                new FollowActionResponse(true, "Following.", "accepted"));
+    }
+
+    public async Task<ApiResponse<List<UserSummaryDto>>> GetFollowRequestsAsync(Guid authUserId)
+    {
+        var profile = await _db.UserProfiles
+            .FirstOrDefaultAsync(p => p.AuthUserId == authUserId);
+        if (profile == null)
+            return ApiResponse<List<UserSummaryDto>>.Fail("User not found.");
+
+        var requests = await _db.Follows
+            .Where(f => f.FollowingId == profile.Id && f.Status == FollowStatus.Pending)
+            .Include(f => f.Follower)
+            .OrderByDescending(f => f.CreatedAt)
+            .ToListAsync();
+
+        var summaries = requests.Select(f => new UserSummaryDto(
+            f.Follower.AuthUserId,
+            f.Follower.Username,
+            f.Follower.FullName,
+            _avatarStorage.ResolvePublicUrl(f.Follower.AvatarPath),
+            f.Follower.Role,
+            false)).ToList();
+
+        return ApiResponse<List<UserSummaryDto>>.Ok(summaries);
+    }
+
+    public async Task<ApiResponse<bool>> RespondToFollowRequestAsync(
+        Guid ownerAuthId, Guid requesterAuthUserId, bool accept)
+    {
+        var ownerProfile = await _db.UserProfiles
+            .FirstOrDefaultAsync(p => p.AuthUserId == ownerAuthId);
+        var requesterProfile = await _db.UserProfiles
+            .FirstOrDefaultAsync(p => p.AuthUserId == requesterAuthUserId);
+
+        if (ownerProfile == null || requesterProfile == null)
+            return ApiResponse<bool>.Fail("User not found.");
+
+        var request = await _db.Follows
+            .FirstOrDefaultAsync(f => f.FollowingId == ownerProfile.Id &&
+                                      f.FollowerId == requesterProfile.Id &&
+                                      f.Status == FollowStatus.Pending);
+
+        if (request == null)
+            return ApiResponse<bool>.Fail("No pending request from that user.");
+
+        if (accept)
+        {
+            request.Status = FollowStatus.Accepted;
+            request.UpdatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            _db.Follows.Remove(request);
+        }
+
+        await _db.SaveChangesAsync();
+        return ApiResponse<bool>.Ok(true, accept ? "Request accepted." : "Request rejected.");
     }
 
     public async Task<ApiResponse<List<UserSummaryDto>>> GetFollowersAsync(Guid authUserId, Guid requesterId)
@@ -289,6 +366,29 @@ public class ProfileBusinessService : IProfileService
             _avatarStorage.ResolvePublicUrl(b.Blocked.AvatarPath))).ToList();
 
         return ApiResponse<List<BlockedUserDto>>.Ok(list);
+    }
+
+    // All auth_user_ids the given user has blocked OR been blocked by, so other
+    // services (e.g. search) can hide those users in both directions.
+    public async Task<List<string>> GetBlockPairIdsAsync(Guid authUserId)
+    {
+        var me = await _db.UserProfiles
+            .Where(p => p.AuthUserId == authUserId)
+            .Select(p => (Guid?)p.Id)
+            .FirstOrDefaultAsync();
+        if (me is null) return new();
+
+        var iBlocked = await _db.BlockedUsers
+            .Where(b => b.BlockerId == me.Value)
+            .Select(b => b.Blocked.AuthUserId.ToString())
+            .ToListAsync();
+
+        var blockedMe = await _db.BlockedUsers
+            .Where(b => b.BlockedId == me.Value)
+            .Select(b => b.Blocker.AuthUserId.ToString())
+            .ToListAsync();
+
+        return iBlocked.Concat(blockedMe).Distinct().ToList();
     }
 
     // Returns a map of auth_user_id -> resolved avatar URL for the given users,

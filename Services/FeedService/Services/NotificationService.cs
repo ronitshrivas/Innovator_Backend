@@ -21,17 +21,25 @@ public class NotificationService : INotificationService
 {
     private readonly FeedDbContext _db;
     private readonly IFirebasePushSender _push;
+    private readonly ISettingsClient _settings;
 
-    public NotificationService(FeedDbContext db, IFirebasePushSender push)
+    public NotificationService(
+        FeedDbContext db, IFirebasePushSender push, ISettingsClient settings)
     {
         _db = db;
         _push = push;
+        _settings = settings;
     }
 
     public async Task CreateAsync(CreateNotificationRequest r)
     {
         // Never notify yourself.
         if (r.SenderId.HasValue && r.SenderId.Value == r.UserId) return;
+
+        // Respect the recipient's notification preferences.
+        var flags = await _settings.GetFlagsAsync(new[] { r.UserId });
+        if (flags.TryGetValue(r.UserId.ToString(), out var f) && !AllowsType(f, r.Type))
+            return;
 
         var notification = new Notification
         {
@@ -49,6 +57,21 @@ public class NotificationService : INotificationService
         await _db.SaveChangesAsync();
 
         await PushAsync(notification);
+    }
+
+    private static bool AllowsType(UserFlags f, string type)
+    {
+        if (!f.PushEnabled) return false;
+        return type switch
+        {
+            "like" => f.NotifyLikes,
+            "comment" => f.NotifyComments,
+            "follow" => f.NotifyFollows,
+            "mention" => f.NotifyMentions,
+            "message" => f.NotifyMessages,
+            "repost" => f.NotifyReposts,
+            _ => true
+        };
     }
 
     private async Task PushAsync(Notification n)

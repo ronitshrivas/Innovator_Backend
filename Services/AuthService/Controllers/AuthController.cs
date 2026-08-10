@@ -90,6 +90,36 @@ public class AuthController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    [HttpPost("change-email")]
+    [Authorize]
+    public async Task<IActionResult> ChangeEmail([FromBody] ChangeEmailRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
+                               ?? User.FindFirstValue("sub")!);
+        var result = await _authService.ChangeEmailAsync(userId, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("change-email/verify")]
+    [Authorize]
+    public async Task<IActionResult> VerifyEmailChange([FromBody] VerifyEmailChangeRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
+                               ?? User.FindFirstValue("sub")!);
+        var result = await _authService.VerifyEmailChangeAsync(userId, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpDelete("account")]
+    [Authorize]
+    public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
+                               ?? User.FindFirstValue("sub")!);
+        var result = await _authService.DeleteAccountAsync(userId, request);
+        return result.Success ? NoContent() : BadRequest(result);
+    }
+
     [HttpPost("send-otp")]
     public async Task<IActionResult> SendOtp([FromBody] ResendOtpRequest request)
     {

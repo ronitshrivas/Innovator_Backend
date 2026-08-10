@@ -59,23 +59,9 @@ public class FeedBusinessService : IFeedService
 
         var results = posts.Select(p => MapToResponse(p, userId)).ToList();
 
-        // Enrich each post with the author's current avatar, occupation and
-        // whether the viewer follows them (resolved from the profile service).
-        var authorIds = posts.Select(p => p.AuthorId).Distinct();
-        var authors = await _avatarResolver.ResolveAuthorsAsync(authorIds, userId);
-        if (authors.Count > 0)
-        {
-            results = results.Select(r =>
-            {
-                if (!authors.TryGetValue(r.UserId, out var info)) return r;
-                return r with
-                {
-                    Avatar = string.IsNullOrEmpty(info.Avatar) ? r.Avatar : info.Avatar,
-                    Occupation = info.Occupation,
-                    IsFollowed = info.IsFollowed,
-                };
-            }).ToList();
-        }
+        // Enrich each post (and any shared/original post) with the author's
+        // current avatar, occupation and follow state from the profile service.
+        results = await EnrichAuthorsAsync(results, posts, userId);
 
         var hasNext = skip + posts.Count < total;
         var next = hasNext ? $"/api/feed?page={page + 1}&pageSize={pageSize}" : null;
@@ -154,19 +140,11 @@ public class FeedBusinessService : IFeedService
 
         var result = MapToResponse(post, requesterId);
 
-        // Enrich with the author's current avatar/occupation/follow so a post
-        // opened from a notification looks identical to the feed.
-        var authors = await _avatarResolver.ResolveAuthorsAsync(
-            new[] { post.AuthorId }, requesterId);
-        if (authors.TryGetValue(post.AuthorId.ToString(), out var info))
-        {
-            result = result with
-            {
-                Avatar = string.IsNullOrEmpty(info.Avatar) ? result.Avatar : info.Avatar,
-                Occupation = info.Occupation,
-                IsFollowed = info.IsFollowed,
-            };
-        }
+        // Enrich with the author's (and any shared post author's) current data so
+        // a post opened from a notification looks identical to the feed.
+        var enriched = await EnrichAuthorsAsync(new List<PostResponse> { result },
+            new List<Post> { post }, requesterId);
+        result = enriched[0];
 
         return ApiResponse<PostResponse>.Ok(result);
     }
@@ -293,6 +271,7 @@ public class FeedBusinessService : IFeedService
             .Include(p => p.Media)
             .Include(p => p.Reactions)
             .Include(p => p.Comments)
+            .Include(p => p.SharedPost).ThenInclude(sp => sp != null ? sp.Media : null)
             .OrderByDescending(p => p.CreatedAt)
             .Skip(skip).Take(pageSize)
             .ToListAsync();
@@ -301,17 +280,8 @@ public class FeedBusinessService : IFeedService
 
         var results = posts.Select(p => MapToResponse(p, requesterId)).ToList();
 
-        // Enrich the author's own posts with current avatar/occupation/follow.
-        var authors = await _avatarResolver.ResolveAuthorsAsync(new[] { authorId }, requesterId);
-        if (authors.TryGetValue(authorId.ToString(), out var info))
-        {
-            results = results.Select(r => r with
-            {
-                Avatar = string.IsNullOrEmpty(info.Avatar) ? r.Avatar : info.Avatar,
-                Occupation = info.Occupation,
-                IsFollowed = info.IsFollowed,
-            }).ToList();
-        }
+        // Enrich the author's own posts (and any shared post) with current data.
+        results = await EnrichAuthorsAsync(results, posts, requesterId);
 
         return ApiResponse<FeedResponse>.Ok(new FeedResponse(results, total, null, null));
     }
@@ -336,21 +306,7 @@ public class FeedBusinessService : IFeedService
 
         var results = posts.Select(p => MapToResponse(p, requesterId)).ToList();
 
-        var authorIds = posts.Select(p => p.AuthorId).Distinct();
-        var authors = await _avatarResolver.ResolveAuthorsAsync(authorIds, requesterId);
-        if (authors.Count > 0)
-        {
-            results = results.Select(r =>
-            {
-                if (!authors.TryGetValue(r.UserId, out var info)) return r;
-                return r with
-                {
-                    Avatar = string.IsNullOrEmpty(info.Avatar) ? r.Avatar : info.Avatar,
-                    Occupation = info.Occupation,
-                    IsFollowed = info.IsFollowed,
-                };
-            }).ToList();
-        }
+        results = await EnrichAuthorsAsync(results, posts, requesterId);
 
         return ApiResponse<FeedResponse>.Ok(new FeedResponse(results, total, null, null));
     }
@@ -371,6 +327,47 @@ public class FeedBusinessService : IFeedService
             .Include(p => p.SharedPost).ThenInclude(sp => sp != null ? sp.Media : null)
             .FirstOrDefaultAsync(p => p.Id == postId);
 
+    // Enriches both the post authors and any shared/original post authors with
+    // their current avatar, occupation and follow state from the profile service.
+    private async Task<List<PostResponse>> EnrichAuthorsAsync(
+        List<PostResponse> results, List<Post> posts, Guid requesterId)
+    {
+        var authorIds = posts.Select(p => p.AuthorId)
+            .Concat(posts.Where(p => p.SharedPost != null)
+                         .Select(p => p.SharedPost!.AuthorId))
+            .Distinct();
+
+        var authors = await _avatarResolver.ResolveAuthorsAsync(authorIds, requesterId);
+        if (authors.Count == 0) return results;
+
+        return results.Select(r =>
+        {
+            var updated = r;
+
+            if (authors.TryGetValue(r.UserId, out var info))
+            {
+                updated = updated with
+                {
+                    Avatar = string.IsNullOrEmpty(info.Avatar) ? updated.Avatar : info.Avatar,
+                    Occupation = info.Occupation,
+                    IsFollowed = info.IsFollowed,
+                };
+            }
+
+            if (updated.SharedPostDetails is { } shared &&
+                authors.TryGetValue(shared.UserId, out var sharedInfo) &&
+                !string.IsNullOrEmpty(sharedInfo.Avatar))
+            {
+                updated = updated with
+                {
+                    SharedPostDetails = shared with { Avatar = sharedInfo.Avatar }
+                };
+            }
+
+            return updated;
+        }).ToList();
+    }
+
     private PostResponse MapToResponse(Post post, Guid requesterId)
     {
         var userReaction = post.Reactions
@@ -381,6 +378,7 @@ public class FeedBusinessService : IFeedService
         {
             sharedDetails = new SharedPostDetailsDto(
                 post.SharedPost.Id.ToString(),
+                post.SharedPost.AuthorId.ToString(),
                 post.SharedPost.Username,
                 post.SharedPost.Username,
                 string.IsNullOrEmpty(post.SharedPost.Avatar)

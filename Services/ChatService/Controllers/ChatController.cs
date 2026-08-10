@@ -28,7 +28,12 @@ public class ChatController : ControllerBase
     {
         var result = await _chatService.GetOrCreateConversationAsync(
             CurrentUserId, CurrentUsername, null, request);
-        return result.Success ? Ok(result) : BadRequest(result);
+        if (result.Success) return Ok(result);
+        // who_can_message denials surface as 403.
+        return result.Message.Contains("message", StringComparison.OrdinalIgnoreCase)
+               && (result.Message.Contains("doesn't accept") || result.Message.Contains("followers"))
+            ? StatusCode(403, result)
+            : BadRequest(result);
     }
 
     [HttpGet("conversations")]

@@ -15,6 +15,12 @@ builder.Services.AddDbContext<SearchDbContext>(options =>
 
 builder.Services.AddScoped<ISearchService, SearchBusinessService>();
 builder.Services.AddScoped<IIndexSyncService, IndexSyncService>();
+builder.Services.AddScoped<IBlockGateway, BlockGateway>();
+builder.Services.AddHttpClient("profile", c =>
+{
+    var baseUrl = builder.Configuration["ProfileServiceUrl"] ?? "http://profile-service:8011";
+    c.BaseAddress = new Uri(baseUrl);
+});
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret is required.");
@@ -80,6 +86,11 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<SearchDbContext>();
     await db.Database.MigrateAsync();
+
+    // Search-visibility flag synced from profile settings. Idempotent.
+    await db.Database.ExecuteSqlRawAsync(@"
+        ALTER TABLE ""UserIndex"" ADD COLUMN IF NOT EXISTS ""ShowInSearch"" boolean NOT NULL DEFAULT TRUE;
+    ");
 });
 
 app.UseSwagger();

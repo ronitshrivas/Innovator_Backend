@@ -101,6 +101,30 @@ public class ProfileController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    // Pending follow requests waiting for the current (private) user to approve.
+    [HttpGet("users/follow-requests")]
+    public async Task<IActionResult> GetFollowRequests()
+    {
+        var result = await _profileService.GetFollowRequestsAsync(CurrentUserId);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("users/follow-requests/{requesterAuthUserId:guid}/accept")]
+    public async Task<IActionResult> AcceptFollowRequest(Guid requesterAuthUserId)
+    {
+        var result = await _profileService.RespondToFollowRequestAsync(
+            CurrentUserId, requesterAuthUserId, accept: true);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("users/follow-requests/{requesterAuthUserId:guid}/reject")]
+    public async Task<IActionResult> RejectFollowRequest(Guid requesterAuthUserId)
+    {
+        var result = await _profileService.RespondToFollowRequestAsync(
+            CurrentUserId, requesterAuthUserId, accept: false);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     [HttpPost("users/{targetAuthUserId:guid}/block")]
     public async Task<IActionResult> ToggleBlock(Guid targetAuthUserId)
     {
@@ -140,6 +164,14 @@ public class InternalProfileController : ControllerBase
         await _profileService.EnsureProfileExistsAsync(
             request.AuthUserId, request.Username, request.Email, request.Role);
         return Ok();
+    }
+
+    // Auth ids the user has blocked or been blocked by (for search exclusion).
+    [HttpGet("profiles/{authUserId:guid}/block-pairs")]
+    public async Task<IActionResult> GetBlockPairs(Guid authUserId)
+    {
+        var ids = await _profileService.GetBlockPairIdsAsync(authUserId);
+        return Ok(ids);
     }
 
     // Batch avatar lookup so the feed can show each author's current avatar.

@@ -29,6 +29,7 @@ builder.Services.AddHttpClient("profile", c =>
     c.Timeout = TimeSpan.FromSeconds(5);
 });
 builder.Services.AddScoped<IProfileAvatarResolver, ProfileAvatarResolver>();
+builder.Services.AddScoped<ISettingsClient, SettingsClient>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret is required.");

@@ -16,6 +16,12 @@ builder.Services.AddDbContext<ChatDbContext>(options =>
 
 builder.Services.AddScoped<IChatService, ChatBusinessService>();
 builder.Services.AddScoped<ChatWebSocketHandler>();
+builder.Services.AddScoped<IProfileGateway, ProfileGateway>();
+builder.Services.AddHttpClient("profile", c =>
+{
+    var baseUrl = builder.Configuration["ProfileServiceUrl"] ?? "http://profile-service:8011";
+    c.BaseAddress = new Uri(baseUrl);
+});
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret is required.");

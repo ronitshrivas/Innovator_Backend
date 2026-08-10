@@ -79,6 +79,19 @@ public record CheckUsernameRequest(
     [Required, MinLength(3)] string Username
 );
 
+public record ChangeEmailRequest(
+    [Required, EmailAddress] string NewEmail,
+    [Required] string Password
+);
+
+public record VerifyEmailChangeRequest(
+    [Required, StringLength(6, MinimumLength = 4)] string Code
+);
+
+public record DeleteAccountRequest(
+    [Required] string Password
+);
+
 public record AuthResponse(
     string AccessToken,
     string RefreshToken,

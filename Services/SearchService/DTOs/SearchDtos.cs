@@ -59,7 +59,8 @@ public record UpsertUserIndexRequest(
     string Role,
     List<string>? Interests,
     int FollowersCount,
-    int FollowingCount
+    int FollowingCount,
+    bool ShowInSearch = true
 );
 
 public record UpsertPostIndexRequest(

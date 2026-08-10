@@ -37,6 +37,7 @@ public class IndexSyncService : IIndexSyncService
             existing.InterestsJson = JsonSerializer.Serialize(request.Interests ?? new());
             existing.FollowersCount = request.FollowersCount;
             existing.FollowingCount = request.FollowingCount;
+            existing.ShowInSearch = request.ShowInSearch;
             existing.UpdatedAt = DateTime.UtcNow;
         }
         else
@@ -51,7 +52,8 @@ public class IndexSyncService : IIndexSyncService
                 Role = request.Role,
                 InterestsJson = JsonSerializer.Serialize(request.Interests ?? new()),
                 FollowersCount = request.FollowersCount,
-                FollowingCount = request.FollowingCount
+                FollowingCount = request.FollowingCount,
+                ShowInSearch = request.ShowInSearch
             });
         }
 
