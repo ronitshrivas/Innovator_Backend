@@ -11,6 +11,7 @@ public class UserProfile : BaseEntity
     public string Role { get; set; } = "innovator";
     public string? Bio { get; set; }
     public string? AvatarPath { get; set; }
+    public string? CoverImagePath { get; set; }
     public string? DateOfBirth { get; set; }
     public string? Phone { get; set; }
     public string? Gender { get; set; }

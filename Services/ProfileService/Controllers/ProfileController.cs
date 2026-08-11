@@ -51,6 +51,24 @@ public class ProfileController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    [HttpPut("users/me/cover")]
+    [HttpPost("users/me/cover")]
+    public async Task<IActionResult> UpdateCover(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "No file uploaded." });
+
+        var result = await _profileService.UpdateCoverAsync(CurrentUserId, file);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpDelete("users/me/cover")]
+    public async Task<IActionResult> DeleteCover()
+    {
+        var result = await _profileService.DeleteCoverAsync(CurrentUserId);
+        return result.Success ? NoContent() : BadRequest(result);
+    }
+
     [HttpGet("users/{authUserId:guid}")]
     public async Task<IActionResult> GetUserById(Guid authUserId)
     {

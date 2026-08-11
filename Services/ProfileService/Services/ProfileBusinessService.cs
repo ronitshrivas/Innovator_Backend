@@ -14,6 +14,8 @@ public interface IProfileService
     Task<ApiResponse<ProfileResponse>> GetProfileByAuthIdAsync(Guid targetAuthUserId, Guid? requesterId);
     Task<ApiResponse<ProfileResponse>> UpdateProfileAsync(Guid authUserId, UpdateProfileRequest request);
     Task<ApiResponse<string>> UpdateAvatarAsync(Guid authUserId, IFormFile file);
+    Task<ApiResponse<CoverImageResponse>> UpdateCoverAsync(Guid authUserId, IFormFile file);
+    Task<ApiResponse<bool>> DeleteCoverAsync(Guid authUserId);
     Task<ApiResponse<FollowActionResponse>> ToggleFollowAsync(Guid followerId, Guid targetAuthUserId);
     Task<ApiResponse<List<UserSummaryDto>>> GetFollowRequestsAsync(Guid authUserId);
     Task<ApiResponse<bool>> RespondToFollowRequestAsync(Guid ownerAuthId, Guid requesterAuthUserId, bool accept);
@@ -131,6 +133,38 @@ public class ProfileBusinessService : IProfileService
 
         var publicUrl = _avatarStorage.ResolvePublicUrl(relativePath);
         return ApiResponse<string>.Ok(publicUrl, "Avatar updated.");
+    }
+
+    public async Task<ApiResponse<CoverImageResponse>> UpdateCoverAsync(Guid authUserId, IFormFile file)
+    {
+        var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.AuthUserId == authUserId);
+        if (profile == null)
+            return ApiResponse<CoverImageResponse>.Fail("Profile not found.");
+
+        _avatarStorage.DeleteAvatar(profile.CoverImagePath);
+
+        var relativePath = await _avatarStorage.SaveCoverAsync(file, profile.Username);
+        profile.CoverImagePath = relativePath;
+        profile.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var publicUrl = _avatarStorage.ResolvePublicUrl(relativePath);
+        return ApiResponse<CoverImageResponse>.Ok(
+            new CoverImageResponse(publicUrl), "Cover image updated.");
+    }
+
+    public async Task<ApiResponse<bool>> DeleteCoverAsync(Guid authUserId)
+    {
+        var profile = await _db.UserProfiles.FirstOrDefaultAsync(p => p.AuthUserId == authUserId);
+        if (profile == null)
+            return ApiResponse<bool>.Fail("Profile not found.");
+
+        _avatarStorage.DeleteAvatar(profile.CoverImagePath);
+        profile.CoverImagePath = null;
+        profile.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return ApiResponse<bool>.Ok(true, "Cover image removed.");
     }
 
     // requesterId is an AUTH user id; follows store PROFILE ids. Resolve the
@@ -480,6 +514,9 @@ public class ProfileBusinessService : IProfileService
             profile.Role,
             profile.Bio,
             _avatarStorage.ResolvePublicUrl(profile.AvatarPath),
+            string.IsNullOrEmpty(profile.CoverImagePath)
+                ? null
+                : _avatarStorage.ResolvePublicUrl(profile.CoverImagePath),
             profile.DateOfBirth,
             profile.Phone,
             profile.Gender,

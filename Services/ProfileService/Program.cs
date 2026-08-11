@@ -87,6 +87,7 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
         ALTER TABLE ""UserProfiles"" ADD COLUMN IF NOT EXISTS ""EducationsJson"" text NOT NULL DEFAULT '[]';
         ALTER TABLE ""UserProfiles"" ADD COLUMN IF NOT EXISTS ""OccupationsJson"" text NOT NULL DEFAULT '[]';
         ALTER TABLE ""UserProfiles"" ADD COLUMN IF NOT EXISTS ""LinksJson"" text NOT NULL DEFAULT '[]';
+        ALTER TABLE ""UserProfiles"" ADD COLUMN IF NOT EXISTS ""CoverImagePath"" text NULL;
     ");
 
     // Per-user settings table, created outside EF migrations. Idempotent.

@@ -30,6 +30,7 @@ public record ProfileResponse(
     string Role,
     string? Bio,
     string? Avatar,
+    string? CoverImage,
     string? DateOfBirth,
     string? Phone,
     string? Gender,
@@ -45,6 +46,8 @@ public record ProfileResponse(
     bool IsFollowed,
     DateTime CreatedAt
 );
+
+public record CoverImageResponse(string CoverImage);
 
 public record UserSummaryDto(
     Guid Id,

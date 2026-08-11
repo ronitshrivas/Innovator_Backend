@@ -7,6 +7,7 @@ namespace ProfileService.Services;
 public interface IAvatarStorageService
 {
     Task<string> SaveAvatarAsync(IFormFile file, string username);
+    Task<string> SaveCoverAsync(IFormFile file, string username);
     void DeleteAvatar(string? relativePath);
     string ResolvePublicUrl(string? relativePath);
 }
@@ -59,6 +60,42 @@ public class AvatarStorageService : IAvatarStorageService
         }
 
         return $"/avatars/{fileName}";
+    }
+
+    public async Task<string> SaveCoverAsync(IFormFile file, string username)
+    {
+        if (file.Length > 8 * 1024 * 1024)
+            throw new InvalidOperationException("Cover image must be smaller than 8MB.");
+
+        var uploadsDir = Path.Combine(_env.WebRootPath ?? "wwwroot", "covers");
+        Directory.CreateDirectory(uploadsDir);
+
+        var fileName = $"{username}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.jpg";
+        var filePath = Path.Combine(uploadsDir, fileName);
+
+        Image image;
+        try
+        {
+            image = await Image.LoadAsync(file.OpenReadStream());
+        }
+        catch
+        {
+            throw new InvalidOperationException(
+                "Unsupported image format. Please upload a JPG or PNG.");
+        }
+
+        using (image)
+        {
+            // Wide banner: cap width, keep aspect, crop to a 16:6 banner.
+            image.Mutate(x => x.Resize(new ResizeOptions
+            {
+                Size = new Size(1200, 450),
+                Mode = ResizeMode.Crop
+            }));
+            await image.SaveAsync(filePath, new JpegEncoder { Quality = 85 });
+        }
+
+        return $"/covers/{fileName}";
     }
 
     public void DeleteAvatar(string? relativePath)
