@@ -52,6 +52,7 @@ public record UserSummaryDto(
     string FullName,
     string? Avatar,
     string Role,
+    string? Occupation,
     bool IsFollowed
 );
 

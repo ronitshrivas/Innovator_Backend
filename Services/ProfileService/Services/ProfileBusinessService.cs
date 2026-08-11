@@ -220,6 +220,7 @@ public class ProfileBusinessService : IProfileService
             f.Follower.FullName,
             _avatarStorage.ResolvePublicUrl(f.Follower.AvatarPath),
             f.Follower.Role,
+            f.Follower.Occupation,
             false)).ToList();
 
         return ApiResponse<List<UserSummaryDto>>.Ok(summaries);
@@ -280,6 +281,7 @@ public class ProfileBusinessService : IProfileService
                 f.Follower.FullName,
                 _avatarStorage.ResolvePublicUrl(f.Follower.AvatarPath),
                 f.Follower.Role,
+                f.Follower.Occupation,
                 requesterFollowing.Contains(f.Follower.Id)))
             .ToList();
 
@@ -308,6 +310,7 @@ public class ProfileBusinessService : IProfileService
                 f.FollowingUser.FullName,
                 _avatarStorage.ResolvePublicUrl(f.FollowingUser.AvatarPath),
                 f.FollowingUser.Role,
+                f.FollowingUser.Occupation,
                 requesterFollowing.Contains(f.FollowingUser.Id)))
             .ToList();
 
