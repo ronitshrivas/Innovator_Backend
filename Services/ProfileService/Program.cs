@@ -116,12 +116,50 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
         );
         CREATE UNIQUE INDEX IF NOT EXISTS ""IX_UserSettings_UserId"" ON ""UserSettings"" (""UserId"");
     ");
+
+    // One-time cleanup: clear avatar/cover paths whose file no longer exists on
+    // disk (e.g. wiped by a pre-persistence redeploy) so clients fall back to a
+    // letter avatar instead of a broken 404 image.
+    var storage = scope.ServiceProvider.GetRequiredService<IAvatarStorageService>();
+    var stale = await db.UserProfiles
+        .Where(p => p.AvatarPath != null || p.CoverImagePath != null)
+        .ToListAsync();
+    var changed = false;
+    foreach (var p in stale)
+    {
+        if (p.AvatarPath != null && !storage.FileExists(p.AvatarPath))
+        {
+            p.AvatarPath = null;
+            changed = true;
+        }
+        if (p.CoverImagePath != null && !storage.FileExists(p.CoverImagePath))
+        {
+            p.CoverImagePath = null;
+            changed = true;
+        }
+    }
+    if (changed) await db.SaveChangesAsync();
 });
 
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors();
 app.UseStaticFiles();
+
+// Serve uploaded media (avatars, covers) from a persistent path outside the
+// ephemeral wwwroot, at the same /avatars/... and /covers/... public URLs.
+var mediaRoot = builder.Configuration["MediaStoragePath"];
+if (!string.IsNullOrWhiteSpace(mediaRoot))
+{
+    Directory.CreateDirectory(Path.Combine(mediaRoot, "avatars"));
+    Directory.CreateDirectory(Path.Combine(mediaRoot, "covers"));
+    app.UseStaticFiles(new Microsoft.AspNetCore.Builder.StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(mediaRoot),
+        RequestPath = ""
+    });
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

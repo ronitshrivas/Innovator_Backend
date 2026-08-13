@@ -9,6 +9,7 @@ public interface IAvatarStorageService
     Task<string> SaveAvatarAsync(IFormFile file, string username);
     Task<string> SaveCoverAsync(IFormFile file, string username);
     void DeleteAvatar(string? relativePath);
+    bool FileExists(string? relativePath);
     string ResolvePublicUrl(string? relativePath);
 }
 
@@ -23,13 +24,18 @@ public class AvatarStorageService : IAvatarStorageService
         _env = env;
     }
 
+    // Uploads live outside the container's ephemeral wwwroot so they survive
+    // restarts/redeploys. Backed by a persistent volume in deployment.
+    private string MediaRoot =>
+        _config["MediaStoragePath"] ?? Path.Combine(_env.WebRootPath ?? "wwwroot");
+
     public async Task<string> SaveAvatarAsync(IFormFile file, string username)
     {
         // Allow larger uploads — iPhone photos are often 8–12 MB.
         if (file.Length > 15 * 1024 * 1024)
             throw new InvalidOperationException("Avatar must be smaller than 15MB.");
 
-        var uploadsDir = Path.Combine(_env.WebRootPath ?? "wwwroot", "avatars");
+        var uploadsDir = Path.Combine(MediaRoot, "avatars");
         Directory.CreateDirectory(uploadsDir);
 
         // Always store as JPEG regardless of the uploaded format (png, jpg,
@@ -67,7 +73,7 @@ public class AvatarStorageService : IAvatarStorageService
         if (file.Length > 8 * 1024 * 1024)
             throw new InvalidOperationException("Cover image must be smaller than 8MB.");
 
-        var uploadsDir = Path.Combine(_env.WebRootPath ?? "wwwroot", "covers");
+        var uploadsDir = Path.Combine(MediaRoot, "covers");
         Directory.CreateDirectory(uploadsDir);
 
         var fileName = $"{username}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.jpg";
@@ -101,9 +107,17 @@ public class AvatarStorageService : IAvatarStorageService
     public void DeleteAvatar(string? relativePath)
     {
         if (string.IsNullOrEmpty(relativePath)) return;
-        var full = Path.Combine(_env.WebRootPath ?? "wwwroot", relativePath.TrimStart('/'));
+        var full = Path.Combine(MediaRoot, relativePath.TrimStart('/'));
         if (File.Exists(full))
             File.Delete(full);
+    }
+
+    public bool FileExists(string? relativePath)
+    {
+        if (string.IsNullOrEmpty(relativePath)) return false;
+        if (relativePath.StartsWith("http")) return true; // external URL, assume valid
+        var full = Path.Combine(MediaRoot, relativePath.TrimStart('/'));
+        return File.Exists(full);
     }
 
     public string ResolvePublicUrl(string? relativePath)

@@ -72,8 +72,10 @@ services:
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=innovator_profile;Username=innovator;Password=innovator123"
       # Public host for avatar URLs so devices can load them (not localhost).
       PublicBaseUrl: "http://36.253.137.34:8011"
+      # Persistent media path (avatars + covers) so uploads survive redeploys.
+      MediaStoragePath: "/var/app/media"
     volumes:
-      - ./uploads/profile:/app/wwwroot/avatars
+      - profile_media:/var/app/media
     ports:
       - "8011:8011"
 
@@ -241,3 +243,4 @@ services:
 
 volumes:
   pgdata:
+  profile_media:
