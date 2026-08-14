@@ -8,7 +8,7 @@ namespace FeedService.Services;
 
 public interface IFeedService
 {
-    Task<ApiResponse<FeedResponse>> GetFeedAsync(Guid userId, int page, int pageSize);
+    Task<ApiResponse<FeedResponse>> GetFeedAsync(Guid userId, int page, int pageSize, bool ranked = true);
     Task<ApiResponse<PostResponse>> CreatePostAsync(
         Guid authorId, string username, string avatar,
         CreatePostRequest request, List<IFormFile>? mediaFiles);
@@ -31,43 +31,112 @@ public class FeedBusinessService : IFeedService
     private readonly IMediaStorageService _mediaStorage;
     private readonly IProfileAvatarResolver _avatarResolver;
 
+    private readonly IFeedRanker _ranker;
+
     public FeedBusinessService(
         FeedDbContext db,
         IMediaStorageService mediaStorage,
-        IProfileAvatarResolver avatarResolver)
+        IProfileAvatarResolver avatarResolver,
+        IFeedRanker ranker)
     {
         _db = db;
         _mediaStorage = mediaStorage;
         _avatarResolver = avatarResolver;
+        _ranker = ranker;
     }
 
-    public async Task<ApiResponse<FeedResponse>> GetFeedAsync(Guid userId, int page, int pageSize)
+    public async Task<ApiResponse<FeedResponse>> GetFeedAsync(
+        Guid userId, int page, int pageSize, bool ranked = true)
     {
         var skip = (page - 1) * pageSize;
 
-        var query = _db.Posts
+        var baseQuery = _db.Posts
             .Where(p => !p.IsReel)
             .Include(p => p.Media)
             .Include(p => p.Categories).ThenInclude(pc => pc.Category)
             .Include(p => p.Reactions)
             .Include(p => p.Comments)
-            .Include(p => p.SharedPost).ThenInclude(sp => sp != null ? sp.Media : null)
-            .OrderByDescending(p => p.CreatedAt);
+            .Include(p => p.SharedPost).ThenInclude(sp => sp != null ? sp.Media : null);
 
-        var total = await query.CountAsync();
-        var posts = await query.Skip(skip).Take(pageSize).ToListAsync();
+        var total = await _db.Posts.CountAsync(p => !p.IsReel);
 
-        var results = posts.Select(p => MapToResponse(p, userId)).ToList();
+        // ---- Chronological fallback (?ranked=false), unchanged behaviour. ----
+        if (!ranked)
+        {
+            var chrono = await baseQuery
+                .OrderByDescending(p => p.CreatedAt)
+                .Skip(skip).Take(pageSize)
+                .ToListAsync();
 
-        // Enrich each post (and any shared/original post) with the author's
-        // current avatar, occupation and follow state from the profile service.
-        results = await EnrichAuthorsAsync(results, posts, userId);
+            var chronoResults = chrono.Select(p => MapToResponse(p, userId)).ToList();
+            chronoResults = await EnrichAuthorsAsync(chronoResults, chrono, userId);
 
-        var hasNext = skip + posts.Count < total;
-        var next = hasNext ? $"/api/feed?page={page + 1}&pageSize={pageSize}" : null;
-        var previous = page > 1 ? $"/api/feed?page={page - 1}&pageSize={pageSize}" : null;
+            var chronoHasNext = skip + chrono.Count < total;
+            return ApiResponse<FeedResponse>.Ok(new FeedResponse(
+                chronoResults, total,
+                chronoHasNext ? $"/api/feed?page={page + 1}&pageSize={pageSize}" : null,
+                page > 1 ? $"/api/feed?page={page - 1}&pageSize={pageSize}" : null));
+        }
 
-        return ApiResponse<FeedResponse>.Ok(new FeedResponse(results, total, next, previous));
+        // ---- Ranked feed ----
+        // Stage 1: candidate generation. Pull a recent window (much larger than
+        // one page) so the ranker has something to reorder. This is the cheap
+        // heuristic candidate set; richer generation (2nd-degree, view-dedup)
+        // can be added later without changing the ranker or controller.
+        const int candidateWindow = 300;
+        var candidates = await baseQuery
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(candidateWindow)
+            .ToListAsync();
+
+        var mapped = candidates.Select(p => MapToResponse(p, userId)).ToList();
+        mapped = await EnrichAuthorsAsync(mapped, candidates, userId);
+
+        // Viewer's top categories (from the posts they've reacted to/commented on).
+        var topCategories = await GetViewerTopCategoriesAsync(userId);
+
+        // Stable per-session seed so page 2 continues page 1 rather than
+        // re-shuffling. Ties the ordering to the user (swap for a session id
+        // if you want a fresh order per app-open).
+        var seed = userId.GetHashCode();
+
+        var rankedList = _ranker.Rank(mapped, topCategories, seed);
+
+        var pageItems = rankedList.Skip(skip).Take(pageSize).ToList();
+        var hasNext = skip + pageItems.Count < rankedList.Count;
+
+        return ApiResponse<FeedResponse>.Ok(new FeedResponse(
+            pageItems, total,
+            hasNext ? $"/api/feed?page={page + 1}&pageSize={pageSize}" : null,
+            page > 1 ? $"/api/feed?page={page - 1}&pageSize={pageSize}" : null));
+    }
+
+    // The categories the viewer engages with most, derived from the posts they
+    // have reacted to or commented on. Used as a ranking signal.
+    private async Task<HashSet<string>> GetViewerTopCategoriesAsync(Guid userId)
+    {
+        var reactedPostIds = await _db.Reactions
+            .Where(r => r.AuthorId == userId)
+            .Select(r => r.PostId)
+            .ToListAsync();
+
+        var commentedPostIds = await _db.Comments
+            .Where(c => c.AuthorId == userId && c.PostId != null)
+            .Select(c => c.PostId!.Value)
+            .ToListAsync();
+
+        var engagedPostIds = reactedPostIds.Concat(commentedPostIds).Distinct().ToList();
+        if (engagedPostIds.Count == 0) return new();
+
+        var categoryCounts = await _db.PostCategories
+            .Where(pc => engagedPostIds.Contains(pc.PostId))
+            .GroupBy(pc => pc.CategoryId)
+            .Select(g => new { CategoryId = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(5)
+            .ToListAsync();
+
+        return categoryCounts.Select(x => x.CategoryId.ToString()).ToHashSet();
     }
 
     public async Task<ApiResponse<PostResponse>> CreatePostAsync(

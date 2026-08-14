@@ -31,6 +31,13 @@ builder.Services.AddHttpClient("profile", c =>
 builder.Services.AddScoped<IProfileAvatarResolver, ProfileAvatarResolver>();
 builder.Services.AddScoped<ISettingsClient, SettingsClient>();
 
+// Feed ranking: tunable weights from appsettings "FeedRanking" (no redeploy to
+// retune), behind IFeedRanker so the scorer can be swapped for an ML model.
+var rankingOptions = builder.Configuration.GetSection("FeedRanking").Get<FeedRankingOptions>()
+                     ?? new FeedRankingOptions();
+builder.Services.AddSingleton(rankingOptions);
+builder.Services.AddScoped<IFeedRanker, HeuristicFeedRanker>();
+
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret is required.");
 
