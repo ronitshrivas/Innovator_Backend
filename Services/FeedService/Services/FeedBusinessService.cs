@@ -8,7 +8,7 @@ namespace FeedService.Services;
 
 public interface IFeedService
 {
-    Task<ApiResponse<FeedResponse>> GetFeedAsync(Guid userId, int page, int pageSize, bool ranked = true);
+    Task<ApiResponse<FeedResponse>> GetFeedAsync(Guid userId, int page, int pageSize, bool ranked = true, string? sessionId = null);
     Task<ApiResponse<bool>> RecordViewsAsync(Guid userId, IEnumerable<string> postIds);
     Task<ApiResponse<PostResponse>> CreatePostAsync(
         Guid authorId, string username, string avatar,
@@ -53,7 +53,7 @@ public class FeedBusinessService : IFeedService
     }
 
     public async Task<ApiResponse<FeedResponse>> GetFeedAsync(
-        Guid userId, int page, int pageSize, bool ranked = true)
+        Guid userId, int page, int pageSize, bool ranked = true, string? sessionId = null)
     {
         var skip = (page - 1) * pageSize;
 
@@ -155,20 +155,23 @@ public class FeedBusinessService : IFeedService
         var authorIds = candidates.Select(p => p.AuthorId).Distinct().ToList();
         var authorAffinity = await _affinity.GetAuthorAffinityAsync(userId, authorIds);
 
-        // Stable per-session seed so page 2 continues page 1 rather than
-        // re-shuffling. Ties the ordering to the user (swap for a session id
-        // if you want a fresh order per app-open).
-        var seed = userId.GetHashCode();
+        // Seed the ranking with the caller's session token: the SAME token keeps
+        // paging stable (page 2 continues page 1), a NEW token (sent on each
+        // pull-to-refresh) produces a fresh ordering so refresh shows new posts.
+        var seed = string.IsNullOrEmpty(sessionId)
+            ? userId.GetHashCode()
+            : (userId.ToString() + sessionId).GetHashCode();
 
         var rankedList = _ranker.Rank(mapped, topCategories, secondDegreeSet, authorAffinity, seed);
 
         var pageItems = rankedList.Skip(skip).Take(pageSize).ToList();
         var hasNext = skip + pageItems.Count < rankedList.Count;
 
+        var sid = string.IsNullOrEmpty(sessionId) ? "" : $"&sessionId={sessionId}";
         return ApiResponse<FeedResponse>.Ok(new FeedResponse(
             pageItems, total,
-            hasNext ? $"/api/feed?page={page + 1}&pageSize={pageSize}" : null,
-            page > 1 ? $"/api/feed?page={page - 1}&pageSize={pageSize}" : null));
+            hasNext ? $"/api/feed?page={page + 1}&pageSize={pageSize}{sid}" : null,
+            page > 1 ? $"/api/feed?page={page - 1}&pageSize={pageSize}{sid}" : null));
     }
 
     // The categories the viewer engages with most, derived from the posts they

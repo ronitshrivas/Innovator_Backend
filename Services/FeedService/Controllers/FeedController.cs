@@ -26,9 +26,10 @@ public class FeedController : ControllerBase
     public async Task<IActionResult> GetFeed(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
-        [FromQuery] bool ranked = true)
+        [FromQuery] bool ranked = true,
+        [FromQuery] string? sessionId = null)
     {
-        var result = await _feedService.GetFeedAsync(CurrentUserId, page, pageSize, ranked);
+        var result = await _feedService.GetFeedAsync(CurrentUserId, page, pageSize, ranked, sessionId);
         return Ok(result);
     }
 
