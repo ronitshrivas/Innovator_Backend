@@ -15,6 +15,9 @@ public class FeedDbContext : DbContext
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<FeedFcmToken> FcmTokens => Set<FeedFcmToken>();
+    public DbSet<PostView> PostViews => Set<PostView>();
+    public DbSet<UserCategoryAffinity> UserCategoryAffinities => Set<UserCategoryAffinity>();
+    public DbSet<UserUserAffinity> UserUserAffinities => Set<UserUserAffinity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -95,6 +98,25 @@ public class FeedDbContext : DbContext
         {
             t.HasKey(x => x.Id);
             t.HasIndex(x => new { x.UserId, x.Token }).IsUnique();
+        });
+
+        builder.Entity<PostView>(v =>
+        {
+            v.HasKey(x => x.Id);
+            v.HasIndex(x => new { x.UserId, x.PostId }).IsUnique();
+            v.HasIndex(x => new { x.UserId, x.ViewedAt });
+        });
+
+        builder.Entity<UserCategoryAffinity>(a =>
+        {
+            a.HasKey(x => x.Id);
+            a.HasIndex(x => new { x.UserId, x.CategoryId }).IsUnique();
+        });
+
+        builder.Entity<UserUserAffinity>(a =>
+        {
+            a.HasKey(x => x.Id);
+            a.HasIndex(x => new { x.UserId, x.TargetUserId }).IsUnique();
         });
 
         builder.Entity<Category>().HasData(

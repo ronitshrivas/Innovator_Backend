@@ -116,29 +116,6 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
         );
         CREATE UNIQUE INDEX IF NOT EXISTS ""IX_UserSettings_UserId"" ON ""UserSettings"" (""UserId"");
     ");
-
-    // One-time cleanup: clear avatar/cover paths whose file no longer exists on
-    // disk (e.g. wiped by a pre-persistence redeploy) so clients fall back to a
-    // letter avatar instead of a broken 404 image.
-    var storage = scope.ServiceProvider.GetRequiredService<IAvatarStorageService>();
-    var stale = await db.UserProfiles
-        .Where(p => p.AvatarPath != null || p.CoverImagePath != null)
-        .ToListAsync();
-    var changed = false;
-    foreach (var p in stale)
-    {
-        if (p.AvatarPath != null && !storage.FileExists(p.AvatarPath))
-        {
-            p.AvatarPath = null;
-            changed = true;
-        }
-        if (p.CoverImagePath != null && !storage.FileExists(p.CoverImagePath))
-        {
-            p.CoverImagePath = null;
-            changed = true;
-        }
-    }
-    if (changed) await db.SaveChangesAsync();
 });
 
 app.UseSwagger();

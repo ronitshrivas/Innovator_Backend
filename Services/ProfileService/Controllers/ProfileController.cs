@@ -192,6 +192,14 @@ public class InternalProfileController : ControllerBase
         return Ok(ids);
     }
 
+    // 1st + 2nd degree follow graph for feed candidate generation.
+    [HttpGet("profiles/{authUserId:guid}/follow-graph")]
+    public async Task<IActionResult> GetFollowGraph(Guid authUserId)
+    {
+        var graph = await _profileService.GetFollowGraphAsync(authUserId);
+        return Ok(graph);
+    }
+
     // Batch avatar lookup so the feed can show each author's current avatar.
     [HttpPost("profiles/avatars")]
     public async Task<IActionResult> GetAvatars([FromBody] AvatarLookupRequest request)

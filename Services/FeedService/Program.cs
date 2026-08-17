@@ -37,6 +37,9 @@ var rankingOptions = builder.Configuration.GetSection("FeedRanking").Get<FeedRan
                      ?? new FeedRankingOptions();
 builder.Services.AddSingleton(rankingOptions);
 builder.Services.AddScoped<IFeedRanker, HeuristicFeedRanker>();
+builder.Services.AddScoped<IFollowGraphClient, FollowGraphClient>();
+builder.Services.AddScoped<IAffinityService, AffinityService>();
+builder.Services.AddHostedService<AffinityJob>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret is required.");
@@ -133,6 +136,41 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
         );
         CREATE UNIQUE INDEX IF NOT EXISTS ""IX_FcmTokens_User_Token""
             ON ""FcmTokens"" (""UserId"", ""Token"");
+
+        CREATE TABLE IF NOT EXISTS ""PostViews"" (
+            ""Id"" uuid PRIMARY KEY,
+            ""UserId"" uuid NOT NULL,
+            ""PostId"" uuid NOT NULL,
+            ""ViewedAt"" timestamptz NOT NULL DEFAULT now(),
+            ""CreatedAt"" timestamptz NOT NULL DEFAULT now(),
+            ""UpdatedAt"" timestamptz NOT NULL DEFAULT now()
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_PostViews_User_Post""
+            ON ""PostViews"" (""UserId"", ""PostId"");
+        CREATE INDEX IF NOT EXISTS ""IX_PostViews_User_ViewedAt""
+            ON ""PostViews"" (""UserId"", ""ViewedAt"");
+
+        CREATE TABLE IF NOT EXISTS ""UserCategoryAffinities"" (
+            ""Id"" uuid PRIMARY KEY,
+            ""UserId"" uuid NOT NULL,
+            ""CategoryId"" uuid NOT NULL,
+            ""Score"" double precision NOT NULL DEFAULT 0,
+            ""CreatedAt"" timestamptz NOT NULL DEFAULT now(),
+            ""UpdatedAt"" timestamptz NOT NULL DEFAULT now()
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_UserCategoryAffinity_User_Cat""
+            ON ""UserCategoryAffinities"" (""UserId"", ""CategoryId"");
+
+        CREATE TABLE IF NOT EXISTS ""UserUserAffinities"" (
+            ""Id"" uuid PRIMARY KEY,
+            ""UserId"" uuid NOT NULL,
+            ""TargetUserId"" uuid NOT NULL,
+            ""Score"" double precision NOT NULL DEFAULT 0,
+            ""CreatedAt"" timestamptz NOT NULL DEFAULT now(),
+            ""UpdatedAt"" timestamptz NOT NULL DEFAULT now()
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_UserUserAffinity_User_Target""
+            ON ""UserUserAffinities"" (""UserId"", ""TargetUserId"");
     ");
 });
 

@@ -54,6 +54,31 @@ public class Reaction : BaseEntity
     public string Type { get; set; } = "like";
 }
 
+// Records that a viewer has seen a post, so the ranked feed can avoid
+// re-showing it. One row per (viewer, post).
+public class PostView : BaseEntity
+{
+    public Guid UserId { get; set; }
+    public Guid PostId { get; set; }
+    public DateTime ViewedAt { get; set; } = DateTime.UtcNow;
+}
+
+// Precomputed viewer→category affinity (Phase 2C), refreshed nightly.
+public class UserCategoryAffinity : BaseEntity
+{
+    public Guid UserId { get; set; }
+    public Guid CategoryId { get; set; }
+    public double Score { get; set; }
+}
+
+// Precomputed viewer→author affinity (Phase 2C), refreshed nightly.
+public class UserUserAffinity : BaseEntity
+{
+    public Guid UserId { get; set; }
+    public Guid TargetUserId { get; set; }
+    public double Score { get; set; }
+}
+
 public class Comment : BaseEntity
 {
     public Guid? PostId { get; set; }

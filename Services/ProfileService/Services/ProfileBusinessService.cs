@@ -25,6 +25,7 @@ public interface IProfileService
     Task<ApiResponse<List<BlockedUserDto>>> GetBlockedListAsync(Guid authUserId);
     Task EnsureProfileExistsAsync(Guid authUserId, string username, string email, string role);
     Task<List<string>> GetBlockPairIdsAsync(Guid authUserId);
+    Task<FollowGraph> GetFollowGraphAsync(Guid authUserId, int secondDegreeCap = 200);
     Task<Dictionary<string, string?>> GetAvatarsAsync(IEnumerable<Guid> authUserIds);
     Task<Dictionary<string, AuthorInfo>> GetAuthorInfoAsync(IEnumerable<Guid> authUserIds, Guid? requesterId);
 }
@@ -32,6 +33,8 @@ public interface IProfileService
 /// Compact per-author info the feed embeds: current avatar, occupation and
 /// whether the requesting user follows them.
 public record AuthorInfo(string? Avatar, string? Occupation, bool IsFollowed, string? Username = null);
+
+public record FollowGraph(List<string> Following, List<string> SecondDegree);
 
 public class ProfileBusinessService : IProfileService
 {
@@ -426,6 +429,61 @@ public class ProfileBusinessService : IProfileService
             .ToListAsync();
 
         return iBlocked.Concat(blockedMe).Distinct().ToList();
+    }
+
+    // The user's accepted follows (1st degree) and the people those follows
+    // follow (2nd degree), for feed candidate generation. Auth user ids.
+    public async Task<FollowGraph> GetFollowGraphAsync(Guid authUserId, int secondDegreeCap = 200)
+    {
+        var me = await _db.UserProfiles
+            .Where(p => p.AuthUserId == authUserId)
+            .Select(p => (Guid?)p.Id)
+            .FirstOrDefaultAsync();
+        if (me is null) return new FollowGraph(new(), new());
+
+        // 1st degree: profile ids I follow (accepted).
+        var followingProfileIds = await _db.Follows
+            .Where(f => f.FollowerId == me.Value && f.Status == FollowStatus.Accepted)
+            .Select(f => f.FollowingId)
+            .ToListAsync();
+
+        var following = await _db.UserProfiles
+            .Where(p => followingProfileIds.Contains(p.Id))
+            .Select(p => p.AuthUserId.ToString())
+            .ToListAsync();
+
+        // 2nd degree: accepted follows of my follows, minus me and my follows,
+        // ranked by how many of my follows follow them.
+        var secondDegree = new List<string>();
+        if (followingProfileIds.Count > 0)
+        {
+            var excluded = followingProfileIds.ToHashSet();
+            excluded.Add(me.Value);
+
+            var ranked = await _db.Follows
+                .Where(f => followingProfileIds.Contains(f.FollowerId) &&
+                            f.Status == FollowStatus.Accepted &&
+                            !excluded.Contains(f.FollowingId))
+                .GroupBy(f => f.FollowingId)
+                .Select(g => new { ProfileId = g.Key, Count = g.Count() })
+                .OrderByDescending(x => x.Count)
+                .Take(secondDegreeCap)
+                .ToListAsync();
+
+            var rankedIds = ranked.Select(x => x.ProfileId).ToList();
+            var idToAuth = await _db.UserProfiles
+                .Where(p => rankedIds.Contains(p.Id))
+                .Select(p => new { p.Id, p.AuthUserId })
+                .ToListAsync();
+            var map = idToAuth.ToDictionary(x => x.Id, x => x.AuthUserId.ToString());
+
+            secondDegree = rankedIds
+                .Where(map.ContainsKey)
+                .Select(id => map[id])
+                .ToList();
+        }
+
+        return new FollowGraph(following, secondDegree);
     }
 
     // Returns a map of auth_user_id -> resolved avatar URL for the given users,

@@ -30,6 +30,8 @@ public record CreateReplyRequest(
     [Required, MinLength(1), MaxLength(2000)] string Content
 );
 
+public record RecordViewsRequest(List<string>? PostIds);
+
 public record UpdateCommentRequest(
     [Required, MinLength(1)] string Content
 );

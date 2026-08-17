@@ -9,6 +9,7 @@ namespace FeedService.Services;
 public interface IFeedService
 {
     Task<ApiResponse<FeedResponse>> GetFeedAsync(Guid userId, int page, int pageSize, bool ranked = true);
+    Task<ApiResponse<bool>> RecordViewsAsync(Guid userId, IEnumerable<string> postIds);
     Task<ApiResponse<PostResponse>> CreatePostAsync(
         Guid authorId, string username, string avatar,
         CreatePostRequest request, List<IFormFile>? mediaFiles);
@@ -32,17 +33,23 @@ public class FeedBusinessService : IFeedService
     private readonly IProfileAvatarResolver _avatarResolver;
 
     private readonly IFeedRanker _ranker;
+    private readonly IFollowGraphClient _followGraph;
+    private readonly IAffinityService _affinity;
 
     public FeedBusinessService(
         FeedDbContext db,
         IMediaStorageService mediaStorage,
         IProfileAvatarResolver avatarResolver,
-        IFeedRanker ranker)
+        IFeedRanker ranker,
+        IFollowGraphClient followGraph,
+        IAffinityService affinity)
     {
         _db = db;
         _mediaStorage = mediaStorage;
         _avatarResolver = avatarResolver;
         _ranker = ranker;
+        _followGraph = followGraph;
+        _affinity = affinity;
     }
 
     public async Task<ApiResponse<FeedResponse>> GetFeedAsync(
@@ -79,28 +86,81 @@ public class FeedBusinessService : IFeedService
         }
 
         // ---- Ranked feed ----
-        // Stage 1: candidate generation. Pull a recent window (much larger than
-        // one page) so the ranker has something to reorder. This is the cheap
-        // heuristic candidate set; richer generation (2nd-degree, view-dedup)
-        // can be added later without changing the ranker or controller.
+        // Stage 1: candidate generation — a deduped union of:
+        //   (a) a recent global window (exploration + fresh content),
+        //   (b) recent posts from people the viewer follows,
+        //   (c) recent posts from 2nd-degree connections.
         const int candidateWindow = 300;
+        var graph = await _followGraph.GetAsync(userId);
+        var followingIds = graph.Following
+            .Select(s => Guid.TryParse(s, out var g) ? g : Guid.Empty)
+            .Where(g => g != Guid.Empty).ToList();
+        var secondDegreeIds = graph.SecondDegree
+            .Select(s => Guid.TryParse(s, out var g) ? g : Guid.Empty)
+            .Where(g => g != Guid.Empty).ToList();
+
         var candidates = await baseQuery
             .OrderByDescending(p => p.CreatedAt)
             .Take(candidateWindow)
             .ToListAsync();
 
+        var haveIds = candidates.Select(p => p.Id).ToHashSet();
+
+        var networkIds = followingIds.Concat(secondDegreeIds).Distinct().ToList();
+        if (networkIds.Count > 0)
+        {
+            var networkPosts = await baseQuery
+                .Where(p => networkIds.Contains(p.AuthorId))
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(candidateWindow)
+                .ToListAsync();
+
+            foreach (var p in networkPosts)
+                if (haveIds.Add(p.Id))
+                    candidates.Add(p);
+        }
+
+        var secondDegreeSet = secondDegreeIds.Select(g => g.ToString()).ToHashSet();
+
+        // View-dedup: drop posts this viewer has already seen (last 7 days).
+        // If filtering leaves too few, keep the seen ones (ranked lower later)
+        // so new / low-activity users still get a full feed.
+        var candidateIds = candidates.Select(p => p.Id).ToList();
+        var seenIds = await _db.PostViews
+            .Where(v => v.UserId == userId &&
+                        v.ViewedAt > DateTime.UtcNow.AddDays(-7) &&
+                        candidateIds.Contains(v.PostId))
+            .Select(v => v.PostId)
+            .ToListAsync();
+
+        if (seenIds.Count > 0)
+        {
+            var seen = seenIds.ToHashSet();
+            var unseen = candidates.Where(p => !seen.Contains(p.Id)).ToList();
+            // Only apply the filter if enough remain to fill a few pages.
+            if (unseen.Count >= pageSize * 2)
+                candidates = unseen;
+        }
+
         var mapped = candidates.Select(p => MapToResponse(p, userId)).ToList();
         mapped = await EnrichAuthorsAsync(mapped, candidates, userId);
 
-        // Viewer's top categories (from the posts they've reacted to/commented on).
-        var topCategories = await GetViewerTopCategoriesAsync(userId);
+        // Viewer's top categories — prefer the nightly precomputed table; fall
+        // back to a live query if the job hasn't populated it yet.
+        var topCategories = await _affinity.GetTopCategoriesAsync(userId);
+        if (topCategories.Count == 0)
+            topCategories = await GetViewerTopCategoriesAsync(userId);
+
+        // Precomputed viewer→author affinity for the candidate authors.
+        var authorIds = candidates.Select(p => p.AuthorId).Distinct().ToList();
+        var authorAffinity = await _affinity.GetAuthorAffinityAsync(userId, authorIds);
 
         // Stable per-session seed so page 2 continues page 1 rather than
         // re-shuffling. Ties the ordering to the user (swap for a session id
         // if you want a fresh order per app-open).
         var seed = userId.GetHashCode();
 
-        var rankedList = _ranker.Rank(mapped, topCategories, seed);
+        var rankedList = _ranker.Rank(mapped, topCategories, secondDegreeSet, authorAffinity, seed);
 
         var pageItems = rankedList.Skip(skip).Take(pageSize).ToList();
         var hasNext = skip + pageItems.Count < rankedList.Count;
@@ -137,6 +197,37 @@ public class FeedBusinessService : IFeedService
             .ToListAsync();
 
         return categoryCounts.Select(x => x.CategoryId.ToString()).ToHashSet();
+    }
+
+    // Records which posts a viewer has seen (batch, idempotent). Silently skips
+    // posts already recorded so the app can report freely as the user scrolls.
+    public async Task<ApiResponse<bool>> RecordViewsAsync(Guid userId, IEnumerable<string> postIds)
+    {
+        var ids = postIds
+            .Select(s => Guid.TryParse(s, out var g) ? g : Guid.Empty)
+            .Where(g => g != Guid.Empty)
+            .Distinct()
+            .ToList();
+        if (ids.Count == 0) return ApiResponse<bool>.Ok(true);
+
+        var already = await _db.PostViews
+            .Where(v => v.UserId == userId && ids.Contains(v.PostId))
+            .Select(v => v.PostId)
+            .ToListAsync();
+
+        var existing = already.ToHashSet();
+        var now = DateTime.UtcNow;
+        var fresh = ids.Where(id => !existing.Contains(id))
+            .Select(id => new PostView { UserId = userId, PostId = id, ViewedAt = now })
+            .ToList();
+
+        if (fresh.Count > 0)
+        {
+            _db.PostViews.AddRange(fresh);
+            await _db.SaveChangesAsync();
+        }
+
+        return ApiResponse<bool>.Ok(true);
     }
 
     public async Task<ApiResponse<PostResponse>> CreatePostAsync(

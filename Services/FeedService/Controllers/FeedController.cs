@@ -32,6 +32,16 @@ public class FeedController : ControllerBase
         return Ok(result);
     }
 
+    // The app reports posts that scrolled into view so the ranked feed can stop
+    // re-showing them. Batch + fire-and-forget from the client.
+    [HttpPost("feed/views")]
+    public async Task<IActionResult> RecordViews([FromBody] RecordViewsRequest request)
+    {
+        var result = await _feedService.RecordViewsAsync(
+            CurrentUserId, request.PostIds ?? new List<string>());
+        return Ok(result);
+    }
+
     [HttpPost("posts")]
     public async Task<IActionResult> CreatePost(
         [FromForm] string? content,
