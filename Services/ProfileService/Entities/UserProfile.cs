@@ -34,6 +34,14 @@ public class UserProfile : BaseEntity
     public List<BlockedUser> BlockedUsers { get; set; } = new();
 }
 
+// A suggested user the viewer dismissed; excluded from suggestions for a while.
+public class SuggestionDismissal : BaseEntity
+{
+    public Guid UserId { get; set; }          // the viewer who dismissed
+    public Guid DismissedUserId { get; set; } // the suggestion they dismissed
+    public DateTime DismissedAt { get; set; } = DateTime.UtcNow;
+}
+
 public class Follow : BaseEntity
 {
     public Guid FollowerId { get; set; }

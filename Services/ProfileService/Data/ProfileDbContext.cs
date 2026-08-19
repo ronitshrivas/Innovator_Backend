@@ -11,6 +11,7 @@ public class ProfileDbContext : DbContext
     public DbSet<Follow> Follows => Set<Follow>();
     public DbSet<BlockedUser> BlockedUsers => Set<BlockedUser>();
     public DbSet<UserSettings> UserSettings => Set<UserSettings>();
+    public DbSet<SuggestionDismissal> SuggestionDismissals => Set<SuggestionDismissal>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -47,6 +48,12 @@ public class ProfileDbContext : DbContext
         {
             s.HasKey(x => x.Id);
             s.HasIndex(x => x.UserId).IsUnique();
+        });
+
+        builder.Entity<SuggestionDismissal>(d =>
+        {
+            d.HasKey(x => x.Id);
+            d.HasIndex(x => new { x.UserId, x.DismissedUserId }).IsUnique();
         });
 
         builder.Entity<BlockedUser>(b =>

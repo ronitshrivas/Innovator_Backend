@@ -26,6 +26,8 @@ public interface IProfileService
     Task EnsureProfileExistsAsync(Guid authUserId, string username, string email, string role);
     Task<List<string>> GetBlockPairIdsAsync(Guid authUserId);
     Task<FollowGraph> GetFollowGraphAsync(Guid authUserId, int secondDegreeCap = 200);
+    Task<ApiResponse<List<SuggestedUserDto>>> GetSuggestedUsersAsync(Guid authUserId, int limit);
+    Task<ApiResponse<bool>> DismissSuggestionAsync(Guid authUserId, Guid dismissedAuthUserId);
     Task<Dictionary<string, string?>> GetAvatarsAsync(IEnumerable<Guid> authUserIds);
     Task<Dictionary<string, AuthorInfo>> GetAuthorInfoAsync(IEnumerable<Guid> authUserIds, Guid? requesterId);
 }
@@ -484,6 +486,162 @@ public class ProfileBusinessService : IProfileService
         }
 
         return new FollowGraph(following, secondDegree);
+    }
+
+    // "Suggested for you": people the viewer should follow, ranked by mutual
+    // connections, category overlap, and popularity. Excludes already-followed,
+    // blocked (either direction), self, and recently-dismissed suggestions.
+    public async Task<ApiResponse<List<SuggestedUserDto>>> GetSuggestedUsersAsync(
+        Guid authUserId, int limit)
+    {
+        limit = Math.Clamp(limit, 1, 50);
+
+        var me = await _db.UserProfiles
+            .FirstOrDefaultAsync(p => p.AuthUserId == authUserId);
+        if (me is null)
+            return ApiResponse<List<SuggestedUserDto>>.Ok(new());
+
+        // People I already follow (profile ids) — the seed for 2nd-degree.
+        var myFollowingIds = await _db.Follows
+            .Where(f => f.FollowerId == me.Id && f.Status == FollowStatus.Accepted)
+            .Select(f => f.FollowingId)
+            .ToListAsync();
+
+        // Exclusions: self, my follows, blocked pairs, recent dismissals.
+        var excluded = myFollowingIds.ToHashSet();
+        excluded.Add(me.Id);
+
+        var blockedAuthIds = await GetBlockPairIdsAsync(authUserId);
+        if (blockedAuthIds.Count > 0)
+        {
+            var blockedProfileIds = await _db.UserProfiles
+                .Where(p => blockedAuthIds.Contains(p.AuthUserId.ToString()))
+                .Select(p => p.Id)
+                .ToListAsync();
+            foreach (var id in blockedProfileIds) excluded.Add(id);
+        }
+
+        var dismissedSince = DateTime.UtcNow.AddDays(-30);
+        var dismissedAuthIds = await _db.SuggestionDismissals
+            .Where(d => d.UserId == authUserId && d.DismissedAt > dismissedSince)
+            .Select(d => d.DismissedUserId)
+            .ToListAsync();
+        if (dismissedAuthIds.Count > 0)
+        {
+            var dismissedProfileIds = await _db.UserProfiles
+                .Where(p => dismissedAuthIds.Contains(p.AuthUserId))
+                .Select(p => p.Id)
+                .ToListAsync();
+            foreach (var id in dismissedProfileIds) excluded.Add(id);
+        }
+
+        // ---- Candidate generation ----
+        // (a) 2nd-degree: people my follows follow, with mutual-follow counts.
+        var mutualCounts = new Dictionary<Guid, int>();
+        if (myFollowingIds.Count > 0)
+        {
+            var rows = await _db.Follows
+                .Where(f => myFollowingIds.Contains(f.FollowerId) &&
+                            f.Status == FollowStatus.Accepted &&
+                            !excluded.Contains(f.FollowingId))
+                .GroupBy(f => f.FollowingId)
+                .Select(g => new { ProfileId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            foreach (var r in rows) mutualCounts[r.ProfileId] = r.Count;
+        }
+
+        // (b) popular/rising users I don't follow (dampened), to backfill.
+        var popular = await _db.UserProfiles
+            .Where(p => p.IsActive && !excluded.Contains(p.Id))
+            .Select(p => new { p.Id, Followers = p.Followers.Count(f => f.Status == FollowStatus.Accepted) })
+            .OrderByDescending(x => x.Followers)
+            .Take(limit * 4)
+            .ToListAsync();
+
+        var candidateIds = mutualCounts.Keys
+            .Concat(popular.Select(p => p.Id))
+            .Distinct()
+            .ToList();
+        if (candidateIds.Count == 0)
+            return ApiResponse<List<SuggestedUserDto>>.Ok(new());
+
+        var candidates = await _db.UserProfiles
+            .Where(p => candidateIds.Contains(p.Id) && p.IsActive)
+            .Select(p => new
+            {
+                p.Id, p.AuthUserId, p.Username, p.FullName, p.AvatarPath,
+                p.Occupation, p.InterestsJson,
+                Followers = p.Followers.Count(f => f.Status == FollowStatus.Accepted)
+            })
+            .ToListAsync();
+
+        var myInterests = SafeInterests(me.InterestsJson);
+        var rng = new Random(authUserId.GetHashCode());
+
+        // ---- Ranking ----
+        var scored = candidates.Select(c =>
+        {
+            var mutual = mutualCounts.TryGetValue(c.Id, out var m) ? m : 0;
+            var theirInterests = SafeInterests(c.InterestsJson);
+            var overlap = myInterests.Intersect(theirInterests, StringComparer.OrdinalIgnoreCase).ToList();
+
+            var score =
+                  4.0 * mutual                               // mutual connections — highest
+                + 1.5 * overlap.Count                        // category overlap
+                + 0.6 * Math.Log10(c.Followers + 1)          // popularity, dampened
+                + 0.3 * rng.NextDouble();                    // exploration jitter
+
+            var reason = mutual > 0
+                ? $"Followed by {mutual} {(mutual == 1 ? "person" : "people")} you follow"
+                : overlap.Count > 0
+                    ? $"Active in {overlap[0]}"
+                    : "Popular on Innovator";
+
+            return new { c, score, mutual, reason };
+        })
+        .OrderByDescending(x => x.score)
+        .Take(limit)
+        .ToList();
+
+        var result = scored.Select(x => new SuggestedUserDto(
+            x.c.AuthUserId,
+            x.c.Username,
+            x.c.FullName,
+            _avatarStorage.ResolvePublicUrl(x.c.AvatarPath),
+            x.c.Occupation,
+            x.mutual,
+            x.reason)).ToList();
+
+        return ApiResponse<List<SuggestedUserDto>>.Ok(result);
+    }
+
+    public async Task<ApiResponse<bool>> DismissSuggestionAsync(
+        Guid authUserId, Guid dismissedAuthUserId)
+    {
+        var existing = await _db.SuggestionDismissals
+            .FirstOrDefaultAsync(d => d.UserId == authUserId &&
+                                      d.DismissedUserId == dismissedAuthUserId);
+        if (existing != null)
+        {
+            existing.DismissedAt = DateTime.UtcNow; // refresh the 30-day window
+        }
+        else
+        {
+            _db.SuggestionDismissals.Add(new SuggestionDismissal
+            {
+                UserId = authUserId,
+                DismissedUserId = dismissedAuthUserId
+            });
+        }
+        await _db.SaveChangesAsync();
+        return ApiResponse<bool>.Ok(true, "Suggestion dismissed.");
+    }
+
+    private static List<string> SafeInterests(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new();
+        try { return JsonSerializer.Deserialize<List<string>>(json) ?? new(); }
+        catch { return new(); }
     }
 
     // Returns a map of auth_user_id -> resolved avatar URL for the given users,

@@ -115,6 +115,17 @@ await Innovator.Shared.Helpers.StartupDb.InitializeAsync(async () =>
             ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc')
         );
         CREATE UNIQUE INDEX IF NOT EXISTS ""IX_UserSettings_UserId"" ON ""UserSettings"" (""UserId"");
+
+        CREATE TABLE IF NOT EXISTS ""SuggestionDismissals"" (
+            ""Id"" uuid PRIMARY KEY,
+            ""UserId"" uuid NOT NULL,
+            ""DismissedUserId"" uuid NOT NULL,
+            ""DismissedAt"" timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),
+            ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),
+            ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc')
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_SuggestionDismissals_User_Target""
+            ON ""SuggestionDismissals"" (""UserId"", ""DismissedUserId"");
     ");
 });
 

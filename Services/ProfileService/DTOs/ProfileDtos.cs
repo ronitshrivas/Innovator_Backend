@@ -49,6 +49,16 @@ public record ProfileResponse(
 
 public record CoverImageResponse(string CoverImage);
 
+public record SuggestedUserDto(
+    Guid Id,
+    string Username,
+    string FullName,
+    string? Avatar,
+    string? Occupation,
+    int MutualCount,
+    string Reason
+);
+
 public record UserSummaryDto(
     Guid Id,
     string Username,

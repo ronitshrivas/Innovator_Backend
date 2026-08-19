@@ -119,6 +119,21 @@ public class ProfileController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    // "Suggested for you" — people the viewer should follow.
+    [HttpGet("users/suggested")]
+    public async Task<IActionResult> GetSuggested([FromQuery] int limit = 10)
+    {
+        var result = await _profileService.GetSuggestedUsersAsync(CurrentUserId, limit);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("users/suggested/{dismissedAuthUserId:guid}/dismiss")]
+    public async Task<IActionResult> DismissSuggestion(Guid dismissedAuthUserId)
+    {
+        var result = await _profileService.DismissSuggestionAsync(CurrentUserId, dismissedAuthUserId);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     // Pending follow requests waiting for the current (private) user to approve.
     [HttpGet("users/follow-requests")]
     public async Task<IActionResult> GetFollowRequests()
