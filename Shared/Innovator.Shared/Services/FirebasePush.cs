@@ -108,9 +108,19 @@ public static class FirebasePushServiceCollectionExtensions
 
             services.AddSingleton(app);
             services.AddSingleton<IFirebasePushSender, FirebasePushSender>();
+            Console.WriteLine($"[Firebase] Push enabled using credentials at {credentialsPath}.");
         }
         else
         {
+            // Make a misconfiguration obvious rather than silently dropping pushes.
+            if (!string.IsNullOrWhiteSpace(credentialsPath))
+                Console.WriteLine(
+                    $"[Firebase] Firebase:CredentialsPath set but file not found at " +
+                    $"'{credentialsPath}'; push disabled (using no-op sender).");
+            else
+                Console.WriteLine(
+                    "[Firebase] No Firebase:CredentialsPath configured; push disabled (using no-op sender).");
+
             services.AddSingleton<IFirebasePushSender, NoopPushSender>();
         }
 
