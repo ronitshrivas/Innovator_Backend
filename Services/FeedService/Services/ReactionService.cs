@@ -71,12 +71,20 @@ public class ReactionService : IReactionService
         _db.Reactions.Add(reaction);
         await _db.SaveChangesAsync();
 
-        // Notify the post's author that someone reacted.
-        var actor = await _db.Posts
+        // Resolve the actor's real username + avatar from the profile service
+        // (authoritative — works even if the actor has never posted).
+        var actorInfo = await _authors.ResolveAuthorsAsync(new[] { userId }, null);
+        actorInfo.TryGetValue(userId.ToString(), out var info);
+
+        var fallback = await _db.Posts
             .Where(p => p.AuthorId == userId)
             .Select(p => new { p.Username, p.Avatar })
             .FirstOrDefaultAsync();
-        var actorName = actor?.Username ?? "Someone";
+
+        var actorName = info?.Username ?? fallback?.Username ?? "Someone";
+        var actorAvatar = info?.Avatar ?? fallback?.Avatar;
+
+        // Notify the post's author that someone reacted.
         await _notifications.CreateAsync(new CreateNotificationRequest(
             UserId: post.AuthorId,
             Title: actorName,
@@ -84,7 +92,7 @@ public class ReactionService : IReactionService
             Type: "like",
             SenderId: userId,
             SenderUsername: actorName,
-            SenderAvatar: actor?.Avatar,
+            SenderAvatar: actorAvatar,
             RelatedPostId: postId));
 
         return ApiResponse<ReactionResponse>.Ok(
@@ -92,7 +100,7 @@ public class ReactionService : IReactionService
                 reaction.Id.ToString(),
                 userId.ToString(),
                 actorName,
-                actor?.Avatar,
+                actorAvatar,
                 postId.ToString(),
                 reaction.Type,
                 reaction.CreatedAt));

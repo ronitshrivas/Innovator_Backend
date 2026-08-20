@@ -158,6 +158,14 @@ public class FeedController : ControllerBase
         var result = await _feedService.GetUserPostsAsync(authorId, CurrentUserId, page, pageSize);
         return Ok(result);
     }
+
+    // Innovation (post) count for a user — the profile screen stat.
+    [HttpGet("users/{authorId:guid}/posts/count")]
+    public async Task<IActionResult> GetUserPostCount(Guid authorId)
+    {
+        var result = await _feedService.GetUserPostCountAsync(authorId);
+        return Ok(result);
+    }
 }
 
 [ApiController]

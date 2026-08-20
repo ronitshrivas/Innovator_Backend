@@ -10,6 +10,7 @@ public interface IFeedService
 {
     Task<ApiResponse<FeedResponse>> GetFeedAsync(Guid userId, int page, int pageSize, bool ranked = true, string? sessionId = null);
     Task<ApiResponse<bool>> RecordViewsAsync(Guid userId, IEnumerable<string> postIds);
+    Task<ApiResponse<int>> GetUserPostCountAsync(Guid authorId);
     Task<ApiResponse<PostResponse>> CreatePostAsync(
         Guid authorId, string username, string avatar,
         CreatePostRequest request, List<IFormFile>? mediaFiles);
@@ -172,6 +173,13 @@ public class FeedBusinessService : IFeedService
             pageItems, total,
             hasNext ? $"/api/feed?page={page + 1}&pageSize={pageSize}{sid}" : null,
             page > 1 ? $"/api/feed?page={page - 1}&pageSize={pageSize}{sid}" : null));
+    }
+
+    // Number of posts ("innovations") authored by a user — the profile stat.
+    public async Task<ApiResponse<int>> GetUserPostCountAsync(Guid authorId)
+    {
+        var count = await _db.Posts.CountAsync(p => p.AuthorId == authorId && !p.IsReel);
+        return ApiResponse<int>.Ok(count);
     }
 
     // The categories the viewer engages with most, derived from the posts they
