@@ -43,11 +43,36 @@ public sealed class FirebasePushSender : IFirebasePushSender
 
         foreach (var batch in Chunk(list, 500))
         {
+            // Data-only payload. A top-level Notification block makes Android
+            // hand the message to the system tray directly, which means the
+            // Flutter onMessage handler never fires while the app is in the
+            // foreground (and is unreliable across OEM builds). Folding the
+            // title and body into the data map lets the app render every
+            // notification itself through flutter_local_notifications, so
+            // foreground heads-up pop-ups always show. Android priority "high"
+            // wakes the app promptly; the APNS block keeps iOS alerts working.
+            var payload = new Dictionary<string, string>(data ?? new Dictionary<string, string>())
+            {
+                ["title"] = title,
+                ["body"] = body,
+                ["message"] = body
+            };
+
             var message = new MulticastMessage
             {
                 Tokens = batch,
-                Notification = new Notification { Title = title, Body = body },
-                Data = data is null ? null : new Dictionary<string, string>(data)
+                Data = payload,
+                Android = new AndroidConfig { Priority = Priority.High },
+                Apns = new ApnsConfig
+                {
+                    Headers = new Dictionary<string, string> { ["apns-priority"] = "10" },
+                    Aps = new Aps
+                    {
+                        Alert = new ApsAlert { Title = title, Body = body },
+                        Sound = "default",
+                        ContentAvailable = true
+                    }
+                }
             };
 
             try
