@@ -1,6 +1,7 @@
 using ChatService.Data;
 using ChatService.DTOs;
 using ChatService.Entities;
+using ChatService.WebSockets;
 using Innovator.Shared.DTOs;
 using Microsoft.EntityFrameworkCore;
 
@@ -187,7 +188,18 @@ public class ChatBusinessService : IChatService
             .Include(m => m.ReplyTo)
             .FirstAsync(m => m.Id == message.Id);
 
-        return ApiResponse<MessageDto>.Ok(MapMessageToDto(saved));
+        var dto = MapMessageToDto(saved);
+
+        // Push the message to every participant over the WebSocket so open
+        // threads update instantly instead of waiting for a manual refresh.
+        var participantIds = await _db.Participants
+            .Where(p => p.ConversationId == conversationId && p.IsActive)
+            .Select(p => p.UserId)
+            .ToListAsync();
+        await ChatWebSocketHandler.BroadcastToConversationAsync(
+            participantIds, "new_message", dto);
+
+        return ApiResponse<MessageDto>.Ok(dto);
     }
 
     public async Task<ApiResponse<MessageDto>> UpdateMessageAsync(
@@ -240,6 +252,17 @@ public class ChatBusinessService : IChatService
             .ExecuteUpdateAsync(s => s.SetProperty(m => m.IsRead, true));
 
         await _db.SaveChangesAsync();
+
+        // Tell the other participant(s) their messages were read, so their
+        // delivery ticks turn blue in realtime.
+        var participantIds = await _db.Participants
+            .Where(p => p.ConversationId == conversationId && p.IsActive)
+            .Select(p => p.UserId)
+            .ToListAsync();
+        await ChatWebSocketHandler.BroadcastToConversationAsync(
+            participantIds, "messages_read",
+            new { conversation_id = conversationId.ToString(), reader_id = userId.ToString() });
+
         return ApiResponse<bool>.Ok(true);
     }
 
