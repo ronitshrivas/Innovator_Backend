@@ -127,6 +127,20 @@ public class ProfileController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    // "Find friends" — paginated, searchable people directory to connect with.
+    // Each entry carries avatar, username, name, a headline (occupation, or
+    // education when no occupation), and the viewer's follow status.
+    [HttpGet("users/find-friends")]
+    public async Task<IActionResult> FindFriends(
+        [FromQuery] string? query,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var result = await _profileService.FindFriendsAsync(
+            CurrentUserId, query, page, pageSize);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     [HttpPost("users/suggested/{dismissedAuthUserId:guid}/dismiss")]
     public async Task<IActionResult> DismissSuggestion(Guid dismissedAuthUserId)
     {

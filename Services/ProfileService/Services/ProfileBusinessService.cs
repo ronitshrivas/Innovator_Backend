@@ -27,6 +27,8 @@ public interface IProfileService
     Task<List<string>> GetBlockPairIdsAsync(Guid authUserId);
     Task<FollowGraph> GetFollowGraphAsync(Guid authUserId, int secondDegreeCap = 200);
     Task<ApiResponse<List<SuggestedUserDto>>> GetSuggestedUsersAsync(Guid authUserId, int limit);
+    Task<ApiResponse<FindFriendsPageDto>> FindFriendsAsync(
+        Guid authUserId, string? query, int page, int pageSize);
     Task<ApiResponse<bool>> DismissSuggestionAsync(Guid authUserId, Guid dismissedAuthUserId);
     Task<Dictionary<string, string?>> GetAvatarsAsync(IEnumerable<Guid> authUserIds);
     Task<Dictionary<string, AuthorInfo>> GetAuthorInfoAsync(IEnumerable<Guid> authUserIds, Guid? requesterId);
@@ -613,6 +615,109 @@ public class ProfileBusinessService : IProfileService
             x.reason)).ToList();
 
         return ApiResponse<List<SuggestedUserDto>>.Ok(result);
+    }
+
+    public async Task<ApiResponse<FindFriendsPageDto>> FindFriendsAsync(
+        Guid authUserId, string? query, int page, int pageSize)
+    {
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 50);
+
+        var me = await _db.UserProfiles
+            .FirstOrDefaultAsync(p => p.AuthUserId == authUserId);
+        if (me is null)
+        {
+            return ApiResponse<FindFriendsPageDto>.Ok(
+                new FindFriendsPageDto(Array.Empty<FindFriendDto>(), page, pageSize, false));
+        }
+
+        // Exclude self and either side of a block relationship.
+        var excludedProfileIds = new HashSet<Guid> { me.Id };
+        var blockedAuthIds = await GetBlockPairIdsAsync(authUserId);
+        if (blockedAuthIds.Count > 0)
+        {
+            var blockedProfileIds = await _db.UserProfiles
+                .Where(p => blockedAuthIds.Contains(p.AuthUserId.ToString()))
+                .Select(p => p.Id)
+                .ToListAsync();
+            foreach (var id in blockedProfileIds) excludedProfileIds.Add(id);
+        }
+
+        // Base query: active users I'm allowed to see, optionally name/username
+        // filtered. Case-insensitive contains on either field.
+        var baseQuery = _db.UserProfiles
+            .Where(p => p.IsActive && !excludedProfileIds.Contains(p.Id));
+
+        var trimmed = query?.Trim();
+        if (!string.IsNullOrEmpty(trimmed))
+        {
+            var q = trimmed.ToLower();
+            baseQuery = baseQuery.Where(p =>
+                p.Username.ToLower().Contains(q) ||
+                p.FullName.ToLower().Contains(q));
+        }
+
+        // Order by popularity (accepted followers), then username for stability.
+        var ordered = baseQuery
+            .Select(p => new
+            {
+                Profile = p,
+                Followers = p.Followers.Count(f => f.Status == FollowStatus.Accepted)
+            })
+            .OrderByDescending(x => x.Followers)
+            .ThenBy(x => x.Profile.Username);
+
+        // Fetch one extra row to know if there's a next page.
+        var skip = (page - 1) * pageSize;
+        var rows = await ordered
+            .Skip(skip)
+            .Take(pageSize + 1)
+            .Select(x => x.Profile)
+            .ToListAsync();
+
+        var hasMore = rows.Count > pageSize;
+        if (hasMore) rows = rows.Take(pageSize).ToList();
+
+        // Which of these the viewer already follows (and the follow status).
+        var candidateIds = rows.Select(p => p.Id).ToList();
+        var myFollows = await _db.Follows
+            .Where(f => f.FollowerId == me.Id && candidateIds.Contains(f.FollowingId))
+            .Select(f => new { f.FollowingId, f.Status })
+            .ToListAsync();
+        var statusByProfile = myFollows.ToDictionary(f => f.FollowingId, f => f.Status);
+
+        var people = rows.Select(p =>
+        {
+            // Headline: occupation, else education (LinkedIn-style fallback).
+            var headline = !string.IsNullOrWhiteSpace(p.Occupation)
+                ? p.Occupation
+                : (!string.IsNullOrWhiteSpace(p.Education) ? p.Education : null);
+
+            var followStatus = "none";
+            var isFollowed = false;
+            if (statusByProfile.TryGetValue(p.Id, out var status))
+            {
+                followStatus = status switch
+                {
+                    FollowStatus.Accepted => "accepted",
+                    FollowStatus.Pending => "pending",
+                    _ => "none"
+                };
+                isFollowed = status == FollowStatus.Accepted;
+            }
+
+            return new FindFriendDto(
+                p.AuthUserId,
+                p.Username,
+                p.FullName,
+                _avatarStorage.ResolvePublicUrl(p.AvatarPath),
+                headline,
+                isFollowed,
+                followStatus);
+        }).ToList();
+
+        return ApiResponse<FindFriendsPageDto>.Ok(
+            new FindFriendsPageDto(people, page, pageSize, hasMore));
     }
 
     public async Task<ApiResponse<bool>> DismissSuggestionAsync(

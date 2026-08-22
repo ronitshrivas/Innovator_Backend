@@ -69,6 +69,25 @@ public record UserSummaryDto(
     bool IsFollowed
 );
 
+// A person shown in the "Find Friends" discovery list. Headline is the user's
+// occupation, or their education when no occupation is set (LinkedIn-style).
+public record FindFriendDto(
+    Guid Id,
+    string Username,
+    string FullName,
+    string? Avatar,
+    string? Headline,
+    bool IsFollowed,
+    string FollowStatus // none | pending | accepted
+);
+
+public record FindFriendsPageDto(
+    IReadOnlyList<FindFriendDto> People,
+    int Page,
+    int PageSize,
+    bool HasMore
+);
+
 public record FollowActionResponse(
     bool IsFollowing,
     string Message,
